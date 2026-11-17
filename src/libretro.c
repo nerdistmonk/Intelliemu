@@ -168,10 +168,8 @@ static void build_overlay_path(const char* rom_path, char* overlay_path, size_t 
 // Load controller base PNG from embedded data
 static void load_controller_base(void)
 {
-    int width, height, channels, y, x;
+    int width, height, channels;
     unsigned char* img_data;
-    unsigned char* pixel;
-    unsigned int alpha, r, g, b;
     
     if (controller_base_loaded) {
         return;
@@ -208,10 +206,8 @@ static void load_controller_base(void)
 // Load banner PNG from embedded data
 static void load_banner(void)
 {
-    int width, height, channels, y, x;
+    int width, height, channels;
     unsigned char* img_data;
-    unsigned char* pixel;
-    unsigned int alpha, r, g, b;
     
     if (banner_loaded) {
         return;
@@ -285,10 +281,8 @@ static void build_overlay_path(const char* rom_path, char* overlay_path, size_t 
 static void load_overlay_for_rom(const char* rom_path, const char* system_dir)
 {
     char overlay_path[1024], jpg_path[1024];
-    int width, height, channels, y, x, from_file;
+    int width, height, channels, from_file;
     unsigned char* img_data;
-    unsigned char* pixel;
-    unsigned int alpha, r, g, b;
     char* ext;
     
     if (!rom_path || !system_dir || !multi_screen_enabled) {
@@ -383,19 +377,14 @@ static void render_multi_screen(void)
     int util_bg_x1, util_bg_x2, util_bg_y1, util_bg_y2;
     int src_y, src_x, workspace_x, workspace_y;
     unsigned int bg_color;
-    int overlay_x, overlay_y, overlay_workspace_x, overlay_workspace_y;
-    unsigned int overlay_pixel, overlay_pixel_val;
-    int banner_start_x, banner_start_y;
+    int overlay_x;
+    unsigned int overlay_pixel_val;
     int banner_x, banner_y;
-    int banner_workspace_x, banner_workspace_y;
     unsigned int banner_pixel;
     unsigned int existing;
     int blended_r, blended_g, blended_b;
     float alpha;
-    int button_idx, btn_y, btn_x;
-    int color;
-    int hotspot_idx, workspace_idx;
-    int layer, offset, corner_cut;
+    int layer;
     unsigned int border_colors[7];
     int util_border_x1, util_border_x2, util_border_y1, util_border_y2;
     unsigned int pixel, base_pixel;
@@ -407,7 +396,6 @@ static void render_multi_screen(void)
     unsigned int r, g, b;
     unsigned int existing_r, existing_g, existing_b;
     int hotspot_x_adjust;
-    unsigned int highlight_color;
     
     if (!multi_screen_enabled) return;
     
@@ -589,12 +577,12 @@ static void render_multi_screen(void)
         }
     } else {
         /* Fallback: Draw dark background if banner not loaded */
-        unsigned int utility_bg_color = 0xFF1a2a3a;  /* Dark blue-gray */
+        unsigned int fallback_bg_color = 0xFF1a2a3a;  /* Dark blue-gray */
         for (y = 448; y < 600; y++) {
             if (y >= WORKSPACE_HEIGHT) break;
             for (x = game_x_offset; x < game_x_offset + GAME_SCREEN_WIDTH; x++) {
                 if (x >= WORKSPACE_WIDTH) break;
-                multi_buffer[y * WORKSPACE_WIDTH + x] = utility_bg_color;
+                multi_buffer[y * WORKSPACE_WIDTH + x] = fallback_bg_color;
             }
         }
     }
@@ -620,7 +608,6 @@ static void render_multi_screen(void)
         int offset = layer;
         unsigned int color = border_colors[layer];
         int corner_cut = offset;  /* Amount to cut corners at 45° angle */
-        int i;
         
         /* Top border line */
         for (y = util_border_y1 + offset; y < util_border_y1 + offset + 1; y++) {
@@ -656,37 +643,37 @@ static void render_multi_screen(void)
         
         /* Top-left 45° corner cut */
         for (i = 0; i < corner_cut; i++) {
-            int x = util_border_x1 + i;
-            int y = util_border_y1 + offset + i;
-            if (x >= 0 && x < WORKSPACE_WIDTH && y < WORKSPACE_HEIGHT) {
-                multi_buffer[y * WORKSPACE_WIDTH + x] = color;
+            int cx = util_border_x1 + i;
+            int cy = util_border_y1 + offset + i;
+            if (cx >= 0 && cx < WORKSPACE_WIDTH && cy < WORKSPACE_HEIGHT) {
+                multi_buffer[cy * WORKSPACE_WIDTH + cx] = color;
             }
         }
         
         /* Top-right 45° corner cut */
         for (i = 0; i < corner_cut; i++) {
-            int x = util_border_x2 - 1 - i;
-            int y = util_border_y1 + offset + i;
-            if (x >= 0 && x < WORKSPACE_WIDTH && y < WORKSPACE_HEIGHT) {
-                multi_buffer[y * WORKSPACE_WIDTH + x] = color;
+            int cx = util_border_x2 - 1 - i;
+            int cy = util_border_y1 + offset + i;
+            if (cx >= 0 && cx < WORKSPACE_WIDTH && cy < WORKSPACE_HEIGHT) {
+                multi_buffer[cy * WORKSPACE_WIDTH + cx] = color;
             }
         }
         
         /* Bottom-left 45° corner cut */
         for (i = 0; i < corner_cut; i++) {
-            int x = util_border_x1 + i;
-            int y = util_border_y2 - 1 - offset - i;
-            if (x >= 0 && x < WORKSPACE_WIDTH && y >= 0 && y < WORKSPACE_HEIGHT) {
-                multi_buffer[y * WORKSPACE_WIDTH + x] = color;
+            int cx = util_border_x1 + i;
+            int cy = util_border_y2 - 1 - offset - i;
+            if (cx >= 0 && cx < WORKSPACE_WIDTH && cy >= 0 && cy < WORKSPACE_HEIGHT) {
+                multi_buffer[cy * WORKSPACE_WIDTH + cx] = color;
             }
         }
         
         /* Bottom-right 45° corner cut */
         for (i = 0; i < corner_cut; i++) {
-            int x = util_border_x2 - 1 - i;
-            int y = util_border_y2 - 1 - offset - i;
-            if (x >= 0 && x < WORKSPACE_WIDTH && y >= 0 && y < WORKSPACE_HEIGHT) {
-                multi_buffer[y * WORKSPACE_WIDTH + x] = color;
+            int cx = util_border_x2 - 1 - i;
+            int cy = util_border_y2 - 1 - offset - i;
+            if (cx >= 0 && cx < WORKSPACE_WIDTH && cy >= 0 && cy < WORKSPACE_HEIGHT) {
+                multi_buffer[cy * WORKSPACE_WIDTH + cx] = color;
             }
         }
     }
@@ -1209,11 +1196,6 @@ void retro_run(void)
 	int showKeypad0;
 	int showKeypad1;
 	bool options_updated;
-	static int debug_frame_count = 0;
-	int px;
-	int py;
-	int pp;
-	FILE *f;
 	int any_hotspot_pressed;
 	int h;
 	

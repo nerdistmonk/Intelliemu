@@ -67,8 +67,6 @@
 #include "intv.h"
 #include "ivoice.h"
 
-#define CONDFREE(p)  if (p) free(p)
-
 ivoice_t intellivoice;
 int ivoiceBufferSize;
 int16_t ivoiceBuffer[AUDIO_FREQUENCY / 60 * 2];
@@ -1322,7 +1320,7 @@ uint32_t ivoice_tk(uint32_t len)
 {
     ivoice_t *ivoice = &intellivoice;
     uint64_t until = (ivoice->now + len) * 4;
-    int samples, did_samp, old_idx;
+    int samples, did_samp;
     int sys_clock = ivoice->pal_mode ? 4000000 : 3579545;
     int clock_per_samp = ivoice->pal_mode ? 400 : 358;
 
@@ -1432,7 +1430,6 @@ uint32_t ivoice_tk(uint32_t len)
         /*  repeat count holds up and we have room in our scratch buffer.   */
         /* ---------------------------------------------------------------- */
         did_samp = 0;
-        old_idx  = ivoice->sc_head;
         if (samples > 0) do
         {
             int do_samp;
@@ -1611,10 +1608,7 @@ void ivoice_reset(void)
 /* ======================================================================== */
 void ivoice_dtor(void)
 {
-    ivoice_t *ivoice = &intellivoice;
-
-    CONDFREE(ivoice->window);
-    CONDFREE(ivoice->scratch);
+    /* window and scratch are fixed-size arrays inside intellivoice, not heap allocations. */
 }
 
 void ivoice_frame(void)
