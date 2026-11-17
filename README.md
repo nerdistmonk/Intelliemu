@@ -36,6 +36,33 @@ The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), an
 **Step 4: Launch Games**
 - Load an Intellivision ROM through RetroArch using the freeintv core
 
+## Standalone Emulator (SDL3)
+
+`standalone/` contains an SDL3 frontend that loads the freeintv core directly, without RetroArch. It requires SDL3 development files (tested with SDL 3.4.20; if your distribution does not package SDL3, build it from source).
+
+```sh
+make                                     # build freeintv_libretro.so
+cmake -S standalone -B build/standalone  # configure the frontend
+cmake --build build/standalone           # build build/standalone/intelliemu
+./build/standalone/intelliemu -s system Game.int
+```
+
+If CMake cannot find SDL3, add `-DSDL3_DIR=<prefix>/lib/cmake/SDL3` to the configure step.
+
+Run from the repository root so the default core path (`./freeintv_libretro.so`) resolves. Use `-c PATH` to load a different core, and `-s DIR` for the folder containing `exec.bin` and `grom.bin`. Run `intelliemu --help` for all options.
+
+| Key | Action |
+| --- | --- |
+| F1 / F5 | Save / load state in the current slot |
+| F9 | Select next state slot (1-9) |
+| F10 | Reset |
+| F11 | Toggle fullscreen |
+| Esc | Quit |
+
+Save states are written next to the ROM as `<ROM name without extension>.state<N>`.
+
+Keyboard (player 1): arrows = D-pad, Z/X/C/V = A/B/Y/X, Q/E = L/R, Return = Start, Backspace = Select, 0-9 / `[` / `]` = keypad.
+
 ## Enabling Onscreen Interactive Overlays
 
 The freeintv core features onscreen interactive keypad overlays that display custom controller graphics directly on screen, allowing touch or mouse input.
