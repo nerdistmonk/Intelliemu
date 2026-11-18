@@ -117,6 +117,8 @@ static int build_items(int title, const struct menu_state *state, struct menu_it
             add_item(items, &n, label, NULL, MENU_RECENT, i, true);
          }
          add_separator(items, &n);
+         add_item(items, &n, "About IntelliEmu...", NULL, MENU_ABOUT, 0, true);
+         add_separator(items, &n);
          add_item(items, &n, "Exit", "Ctrl+Q", MENU_EXIT, 0, true);
          break;
 

@@ -15,6 +15,7 @@ enum menu_command
    MENU_OPEN_ROM,
    MENU_CLOSE_ROM,
    MENU_RECENT,
+   MENU_ABOUT,
    MENU_EXIT,
    MENU_RESET,
    MENU_TOGGLE_PAUSE,

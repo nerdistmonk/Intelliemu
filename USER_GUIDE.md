@@ -51,7 +51,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 
 | Menu | Items |
 | --- | --- |
-| File | Open ROM..., Close ROM, recent ROMs, Exit |
+| File | Open ROM..., Close ROM, recent ROMs, About IntelliEmu..., Exit |
 | Emulation | Reset, Pause / Resume, ECS keyboard, Remap Right keyboard..., Remap Left keyboard..., Remap Right gamepad..., Remap Left gamepad..., Swap Right and Left gamepads, Restore default bindings |
 | State | Save slot N, Load slot N, Next slot |
 | Video | Fullscreen, 4:3 aspect, xBRZ filter, Screenshot (PNG) |

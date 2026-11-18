@@ -796,6 +796,21 @@ static void cycle_state_slot(void)
    settings_save(&settings);
 }
 
+static void show_about(void)
+{
+   static const char about_text[] =
+      "IntelliEmu Version 1.0\n"
+      "\n"
+      "Designed by R.Shaklfrd and Claude Haiku\n"
+      "\n"
+      "Originally based on David Richardson's FreeIntv\n"
+      "Uses IntelliVoice code designed by Joe Zbiciak and Oscar Toledo G\n"
+      "\n"
+      "Released under GPL2 Licensing";
+
+   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "About IntelliEmu", about_text, window);
+}
+
 static void handle_menu_action(const struct menu_action *action)
 {
    switch (action->command)
@@ -815,6 +830,10 @@ static void handle_menu_action(const struct menu_action *action)
                open_rom(path);
             SDL_free(path);
          }
+         break;
+      case MENU_ABOUT:
+         menu_close();
+         show_about();
          break;
       case MENU_EXIT:
          quit_requested = true;
@@ -1175,7 +1194,7 @@ static void usage(const char *prog)
          "\n"
          "settings: $XDG_CONFIG_HOME/Intelliemu/config.ini (default ~/.config/Intelliemu/config.ini)\n"
          "          -s, -w, -f, -x, and --no-xbrz apply to this run only\n"
-         "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause, remap, swap gamepads, restore bindings),\n"
+         "menu: File (open, close, recent ROMs, about, exit), Emulation (reset, pause, remap, swap gamepads, restore bindings),\n"
          "      State (save, load, slot), Video (fullscreen, 4:3 aspect, xBRZ filter, screenshot), Audio (mute)\n"
          "hotkeys: Ctrl+O open ROM, Ctrl+W close ROM, Ctrl+Q quit,\n"
          "         F1 save state, F5 load state, F9 next slot, F10 reset,\n"
