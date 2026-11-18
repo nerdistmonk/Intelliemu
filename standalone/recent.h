@@ -12,7 +12,7 @@ struct recent_list
 /* Returns the file name part of a path, accepting '/' or '\\' separators. */
 const char *path_basename(const char *path);
 
-/* Loads the list kept in the user's preferences directory. */
+/* Loads the list kept in recent.txt in the config directory (see config.h). */
 void recent_load(struct recent_list *list);
 
 /* Moves path to the front of the list and saves the list. */

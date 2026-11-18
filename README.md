@@ -54,11 +54,17 @@ After building (see [Building](#building)):
 ./release/intelliemu -s system Game.int
 ```
 
-The frontend loads `freeintv_libretro.so` from the build directory by default (the absolute path is baked in at build time). Use `-c PATH` to load a different core, and `-s DIR` for the folder containing `exec.bin` and `grom.bin`. Run `intelliemu --help` for all options.
+The frontend loads `freeintv_libretro.so` from the build directory by default (the absolute path is baked in at build time). Use `-c PATH` to load a different core. Run `intelliemu --help` for all options.
 
-- **BIOS:** `exec.bin` and `grom.bin` are read from the `-s` directory, which defaults to the current working directory.
+- **BIOS:** `exec.bin` and `grom.bin` are read from the `system_dir` setting (default: the current working directory). `-s DIR` overrides it for one run.
 - **Save states:** written next to the ROM, as `<ROM file name without extension>.state<slot>`.
-- **Recent ROMs:** stored in `recent.txt` under `$XDG_DATA_HOME/Intelliemu/` (usually `~/.local/share/Intelliemu/`).
+- **Settings:** stored in `~/.config/Intelliemu/config.ini` (`$XDG_CONFIG_HOME/Intelliemu/` if set). The file is created on first run. Keys:
+  - `scale`: initial window scale, 1-16. `-x N` overrides it for one run.
+  - `system_dir`: folder containing `exec.bin` and `grom.bin`.
+  - `fullscreen`, `muted`: `1` or `0`. Changed from F11 and the Audio menu, and saved immediately.
+  - `state_slot`: save state slot, 1-9. Changed with F9 and the State menu, and saved immediately.
+- **Recent ROMs:** stored in `recent.txt` in the same config directory.
+- Command-line options apply to that run only and are never written to `config.ini`.
 
 | Key | Action |
 | --- | --- |

@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL_main.h>
 
+#include "config.h"
 #include "intelliemu.h"
 #include "menu.h"
 #include "recent.h"
@@ -20,9 +21,6 @@
 #define DEFAULT_WIDTH 352
 #define DEFAULT_HEIGHT 224
 #define DEBUG_CHAR_W 8
-#define DEFAULT_SCALE 3
-#define MAX_SCALE 16
-#define MAX_STATE_SLOT 9
 #define STAGE_FRAMES 4096
 #define AUDIO_LEAD_FRAMES 3
 #define DIALOG_RESULT 0
@@ -53,10 +51,9 @@ static SDL_AudioStream *audio;
 static int audio_lead_bytes;
 static uint64_t frame_ns;
 static uint64_t next_frame_ns;
-static int state_slot = 1;
 static bool quit_requested;
 static bool paused;
-static bool muted;
+static struct settings settings;
 static bool dialog_pending;
 static Uint32 open_rom_event;
 static char status[64];
@@ -159,7 +156,7 @@ static void audio_open(int sample_rate)
       return;
    }
 
-   SDL_SetAudioStreamGain(audio, muted ? 0.0f : 1.0f);
+   SDL_SetAudioStreamGain(audio, settings.muted ? 0.0f : 1.0f);
    SDL_ResumeAudioStreamDevice(audio);
 }
 
@@ -328,8 +325,8 @@ static void fill_menu_state(struct menu_state *state)
    state->game_running = game_running();
    state->paused = paused;
    state->fullscreen = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
-   state->muted = muted;
-   state->state_slot = state_slot;
+   state->muted = settings.muted;
+   state->state_slot = settings.state_slot;
    state->canvas_width = (int)pic_w;
    state->recent = &recent;
 }
@@ -443,12 +440,12 @@ static void save_state(void)
 
    size = core.serialize_size();
    buf = SDL_malloc(size);
-   path = state_path(state_slot);
+   path = state_path(settings.state_slot);
 
    if (buf && path && core.serialize(buf, size) && write_file(path, buf, size))
-      fprintf(stderr, "saved state slot %d to %s\n", state_slot, path);
+      fprintf(stderr, "saved state slot %d to %s\n", settings.state_slot, path);
    else
-      fprintf(stderr, "failed to save state slot %d\n", state_slot);
+      fprintf(stderr, "failed to save state slot %d\n", settings.state_slot);
 
    SDL_free(buf);
    SDL_free(path);
@@ -465,17 +462,17 @@ static void load_state(void)
 
    size = core.serialize_size();
    buf = SDL_malloc(size);
-   path = state_path(state_slot);
+   path = state_path(settings.state_slot);
 
    if (buf && path && read_file(path, buf, size) && core.unserialize(buf, size))
    {
       if (audio)
          SDL_ClearAudioStream(audio);
-      fprintf(stderr, "loaded state slot %d from %s\n", state_slot, path);
+      fprintf(stderr, "loaded state slot %d from %s\n", settings.state_slot, path);
    }
    else
    {
-      fprintf(stderr, "failed to load state slot %d\n", state_slot);
+      fprintf(stderr, "failed to load state slot %d\n", settings.state_slot);
    }
 
    SDL_free(buf);
@@ -486,20 +483,24 @@ static void toggle_fullscreen(void)
 {
    SDL_WindowFlags flags = SDL_GetWindowFlags(window);
 
-   SDL_SetWindowFullscreen(window, !(flags & SDL_WINDOW_FULLSCREEN));
+   settings.fullscreen = !(flags & SDL_WINDOW_FULLSCREEN);
+   SDL_SetWindowFullscreen(window, settings.fullscreen);
+   settings_save(&settings);
 }
 
 static void toggle_mute(void)
 {
-   muted = !muted;
+   settings.muted = !settings.muted;
    if (audio)
-      SDL_SetAudioStreamGain(audio, muted ? 0.0f : 1.0f);
+      SDL_SetAudioStreamGain(audio, settings.muted ? 0.0f : 1.0f);
+   settings_save(&settings);
 }
 
 static void cycle_state_slot(void)
 {
-   state_slot = state_slot % MAX_STATE_SLOT + 1;
-   fprintf(stderr, "state slot %d\n", state_slot);
+   settings.state_slot = settings.state_slot % MAX_STATE_SLOT + 1;
+   fprintf(stderr, "state slot %d\n", settings.state_slot);
+   settings_save(&settings);
 }
 
 static void handle_menu_action(const struct menu_action *action)
@@ -755,6 +756,9 @@ static int run(const struct options *opt)
       goto cleanup;
    }
 
+   if (settings.fullscreen)
+      SDL_SetWindowFullscreen(window, true);
+
    SDL_SetRenderVSync(renderer, 1);
    update_presentation();
    set_title();
@@ -785,11 +789,13 @@ static void usage(const char *prog)
    fprintf(stderr,
          "usage: %s [options] [GAME]\n"
          "  -c, --core PATH    libretro core library (default: %s)\n"
-         "  -s, --system DIR   directory with exec.bin and grom.bin (default: .)\n"
-         "  -x, --scale N      initial window scale, 1-%d (default: %d)\n"
+         "  -s, --system DIR   directory with exec.bin and grom.bin (default: from config.ini)\n"
+         "  -x, --scale N      initial window scale, 1-%d (default: from config.ini)\n"
          "  -f, --frames N     exit after N frames (requires GAME; for testing)\n"
          "  -h, --help         show this help\n"
          "\n"
+         "settings: $XDG_CONFIG_HOME/Intelliemu/config.ini (default ~/.config/Intelliemu/config.ini)\n"
+         "          -s and -x apply to this run only\n"
          "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause),\n"
          "      State (save, load, slot), Video (fullscreen), Audio (mute)\n"
          "hotkeys: Ctrl+O open ROM, Ctrl+W close ROM, Ctrl+Q quit,\n"
@@ -797,7 +803,7 @@ static void usage(const char *prog)
          "         F11 fullscreen, Esc close menu or quit\n"
          "keyboard (player 1): arrows = D-pad, Z/X/C/V = A/B/Y/X, Q/E = L/R,\n"
          "         Return = start, Backspace = select, 0-9 / [ / ] = keypad\n",
-         prog, DEFAULT_CORE, MAX_SCALE, DEFAULT_SCALE);
+         prog, DEFAULT_CORE, MAX_SCALE);
 }
 
 
@@ -815,14 +821,17 @@ static bool parse_long(const char *text, long min, long max, long *value)
 
 int main(int argc, char *argv[])
 {
+   settings_load(&settings);
+
    struct options opt = {
       .core_path = DEFAULT_CORE,
-      .system_dir = ".",
+      .system_dir = settings.system_dir,
       .rom = NULL,
-      .scale = DEFAULT_SCALE,
+      .scale = settings.scale,
       .max_frames = -1,
    };
    int i;
+   int status;
 
    for (i = 1; i < argc; i++)
    {
@@ -872,5 +881,7 @@ int main(int argc, char *argv[])
    }
 
    warn_missing_bios(opt.system_dir);
-   return run(&opt);
+   status = run(&opt);
+   settings_free(&settings);
+   return status;
 }
