@@ -156,5 +156,5 @@ The emulator rewrites `config.ini` whenever it saves a setting, so hand-added ke
 - **The left stick is not bindable.** It drives the disc.
 - **The right stick drives the keypad directions** (Tron Deadly Discs). It is not bindable. Its click and both triggers can be bound as gamepad inputs.
 - **Keypad input from a stick is not supported.** Only the right stick reaches the keypad directions.
-- **ECS is not supported.**
+- **ECS keyboard is not emulated.** The ECS PSG2 sound chip is emulated and mixed with PSG1. Games that read the ECS keyboard, such as Melody Blaster and Number Jumble, may not play correctly.
 - **Melody Blaster and Scooby Doo** report bad opcodes and do not run yet.

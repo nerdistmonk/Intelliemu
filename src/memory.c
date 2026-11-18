@@ -97,6 +97,12 @@ void writeMem(int adr, int val) // Write (should handle hooks/alias)
         ivoice_wr(adr & 1, val);
         return;
     }
+    if (ecs_enabled && adr >= 0xF0 && adr <= 0xFD) {
+        // ECS PSG2 registers
+        Memory[adr] = val & 0xFF;
+        PSG2Notify(adr, val);
+        return;
+    }
     if(adr>=0x100 && adr<=0x1FF)
     {
         val = val & 0xFF;
