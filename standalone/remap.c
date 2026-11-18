@@ -241,13 +241,15 @@ bool remap_handle_pad(int input)
    return bind_pad(selected(), input);
 }
 
-void remap_render(SDL_Renderer *renderer, int width, int height)
+void remap_render(SDL_Renderer *renderer, int width, int height, const char *const pad_names[PLAYER_COUNT])
 {
    const int col_w = width / COLUMN_COUNT;
    const float top = (float)MENU_BAR_HEIGHT;
    const enum control sel = selected();
    SDL_FRect panel = { 0, top, (float)width, (float)(height - MENU_BAR_HEIGHT) };
    char text[TEXT_MAX];
+   char name_one[TEXT_MAX];
+   char name_two[TEXT_MAX];
    float footer;
    int col;
    int r;
@@ -308,4 +310,10 @@ void remap_render(SDL_Renderer *renderer, int width, int height)
 
    SDL_SetRenderDrawColor(renderer, 150, 150, 160, 255);
    SDL_RenderDebugText(renderer, PAD, footer + 2 * LINE_HEIGHT, "Enter rebind  Del clear  Esc close");
+
+   fit_text(name_one, sizeof(name_one), pad_names[0] ? pad_names[0] : "none", 14);
+   fit_text(name_two, sizeof(name_two), pad_names[1] ? pad_names[1] : "none", 14);
+   SDL_snprintf(text, sizeof(text), "P1: %s   P2: %s", name_one, name_two);
+   SDL_SetRenderDrawColor(renderer, 160, 220, 255, 255);
+   SDL_RenderDebugText(renderer, PAD, footer + 3 * LINE_HEIGHT, text);
 }

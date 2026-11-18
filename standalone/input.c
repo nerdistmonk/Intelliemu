@@ -39,7 +39,7 @@ static SDL_Gamepad *pads[PLAYER_COUNT];
 static struct
 {
    uint16_t buttons[PLAYER_COUNT];
-   int16_t stick[PLAYER_COUNT][2];
+   int16_t stick[PLAYER_COUNT][2][2];
 } snapshot;
 
 /* Keypad presses still held, per player. The top entry is the one the core is told about. */
@@ -254,6 +254,19 @@ static void trigger_sync(int port)
          pad_input_event(port, PAD_LEFT_TRIGGER + t, false);
       trigger_down[port][t] = down;
    }
+}
+
+int input_pad_port(SDL_JoystickID id)
+{
+   return port_for_pad(id);
+}
+
+const char *input_pad_name(int port)
+{
+   if (port < 0 || port >= PLAYER_COUNT || !pads[port])
+      return NULL;
+
+   return SDL_GetGamepadName(pads[port]);
 }
 
 static void gamepad_added(SDL_JoystickID id)
@@ -482,8 +495,10 @@ void frontend_input_poll(void)
       latched[port] = 0;
       snapshot.buttons[port] = bits;
 
-      snapshot.stick[port][0] = pad ? SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTX) : 0;
-      snapshot.stick[port][1] = pad ? SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTY) : 0;
+      snapshot.stick[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][0] = pad ? SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTX) : 0;
+      snapshot.stick[port][RETRO_DEVICE_INDEX_ANALOG_LEFT][1] = pad ? SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTY) : 0;
+      snapshot.stick[port][RETRO_DEVICE_INDEX_ANALOG_RIGHT][0] = pad ? SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHTX) : 0;
+      snapshot.stick[port][RETRO_DEVICE_INDEX_ANALOG_RIGHT][1] = pad ? SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHTY) : 0;
    }
 }
 
@@ -495,8 +510,8 @@ int16_t frontend_input_state(unsigned port, unsigned device, unsigned index, uns
    if (device == RETRO_DEVICE_JOYPAD)
       return (id < 16 && ((snapshot.buttons[port] >> id) & 1u)) ? 1 : 0;
 
-   if (device == RETRO_DEVICE_ANALOG && index == RETRO_DEVICE_INDEX_ANALOG_LEFT && id < 2)
-      return snapshot.stick[port][id];
+   if (device == RETRO_DEVICE_ANALOG && (index == RETRO_DEVICE_INDEX_ANALOG_LEFT || index == RETRO_DEVICE_INDEX_ANALOG_RIGHT) && id < 2)
+      return snapshot.stick[port][index][id];
 
    return 0;
 }

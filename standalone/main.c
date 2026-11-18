@@ -60,6 +60,9 @@ static struct settings settings;
 static bool dialog_pending;
 static Uint32 open_rom_event;
 static char status[64];
+#define NOTICE_MS 4000
+static char notice[64];
+static Uint64 notice_until_ms;
 static struct recent_list recent;
 static int16_t stage[STAGE_FRAMES * 2];
 static size_t stage_frames;
@@ -363,8 +366,19 @@ static void render(void)
       draw_centered(mid + 4, "File > Open ROM... (Ctrl+O)");
    }
 
+   if (notice[0] && SDL_GetTicks() < notice_until_ms)
+      draw_centered(MENU_BAR_HEIGHT + (float)pic_h - 12, notice);
+
    if (remap_is_open())
-      remap_render(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT));
+   {
+      const char *pad_names[PLAYER_COUNT];
+      int port;
+
+      for (port = 0; port < PLAYER_COUNT; port++)
+         pad_names[port] = input_pad_name(port);
+
+      remap_render(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT), pad_names);
+   }
 
    fill_menu_state(&state);
    menu_render(renderer, &state);
@@ -674,6 +688,19 @@ static void handle_dialog_result(const SDL_Event *event)
    SDL_free(path);
 }
 
+static void announce_gamepad(SDL_JoystickID id)
+{
+   int port = input_pad_port(id);
+   const char *name = port >= 0 ? input_pad_name(port) : NULL;
+
+   if (port < 0)
+      SDL_strlcpy(notice, "Gamepad not assigned: both players already have one", sizeof(notice));
+   else
+      SDL_snprintf(notice, sizeof(notice), "P%d gamepad: %s", port + 1, name && name[0] ? name : "unnamed");
+
+   notice_until_ms = SDL_GetTicks() + NOTICE_MS;
+}
+
 static void handle_event(const SDL_Event *event)
 {
    if (event->type == SDL_EVENT_QUIT)
@@ -696,6 +723,9 @@ static void handle_event(const SDL_Event *event)
       apply_bindings();
 
    input_handle_event(event);
+
+   if (event->type == SDL_EVENT_GAMEPAD_ADDED)
+      announce_gamepad(event->gdevice.which);
 }
 
 static void update_input_block(void)

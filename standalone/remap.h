@@ -24,7 +24,7 @@ bool remap_wants_pad(void);
 bool remap_handle_key(const SDL_KeyboardEvent *key);
 bool remap_handle_pad(int input);
 
-/* Draws over the picture area, which starts below the menu bar. */
-void remap_render(SDL_Renderer *renderer, int width, int height);
+/* Draws over the picture area, which starts below the menu bar. pad_names[p] is NULL when player p has no gamepad. */
+void remap_render(SDL_Renderer *renderer, int width, int height, const char *const pad_names[PLAYER_COUNT]);
 
 #endif

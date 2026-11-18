@@ -54,6 +54,8 @@ void input_set_blocked(bool blocked);
 void input_set_bindings(const struct control_map bindings[PLAYER_COUNT]);
 /* Returns the gamepad input pressed in this event (see PAD_* in controls.h), or PAD_UNBOUND. Stateless. */
 int input_pad_press_from_event(const SDL_Event *event);
+int input_pad_port(SDL_JoystickID id);
+const char *input_pad_name(int port);
 
 /* Implemented by main.c and input.c; called by the core. */
 void frontend_video_refresh(const void *data, unsigned width, unsigned height, size_t pitch);

@@ -109,6 +109,8 @@ Each **Remap** entry in the Emulation menu edits one player's bindings for one d
 
 Gamepad bindings start empty. Bind any gamepad button or trigger to any control with **Remap P1 gamepad...** or **Remap P2 gamepad...**. Player 1 uses the first connected gamepad and player 2 the second, in connection order.
 
+When a gamepad connects, the window shows a notice for a few seconds naming its player and controller, such as `P1 gamepad: Xbox 360 Controller`. If both players already have a gamepad, the notice says the new one is not assigned. The bottom line of each remap screen lists the controller for P1 and P2, or `none`.
+
 Controller layouts come from `gamecontrollerdb.txt`, which sits beside the `intelliemu` executable. If the file is missing, the emulator prints a warning and uses only SDL's built-in mappings.
 
 When several keypad buttons are held, the most recently pressed one that is still held is the one the core receives. Keypad buttons combine with the other controls, so a disc direction can be held while a keypad button is pressed.
@@ -140,6 +142,8 @@ The emulator rewrites `config.ini` whenever it saves a setting, so hand-added ke
 ## Known Limitations
 
 - **Keypad overlays are not available.** The core's overlay needs its core option and mouse or touch input. The standalone emulator does not yet provide core options or mouse input.
-- **The right stick is not mapped.** Its click and both triggers can be bound as gamepad inputs. The left stick drives the disc, and keypad input from a stick is not supported.
+- **The left stick is not bindable.** It drives the disc.
+- **The right stick drives the keypad directions** (Tron Deadly Discs). It is not bindable. Its click and both triggers can be bound as gamepad inputs.
+- **Keypad input from a stick is not supported.** Only the right stick reaches the keypad directions.
 - **ECS is not supported.**
 - **Melody Blaster and Scooby Doo** report bad opcodes and do not run yet.
