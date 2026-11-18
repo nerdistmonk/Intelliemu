@@ -131,7 +131,7 @@ static void settings_defaults(struct settings *s)
    s->fullscreen = false;
    s->muted = false;
    s->state_slot = 1;
-   controls_reset(s->keys);
+   controls_reset(s->bindings);
 }
 
 static char *trim(char *text)
@@ -156,23 +156,63 @@ static void apply_flag(bool *flag, const char *value)
 }
 
 /* An empty value unbinds the control. An unknown or reserved name keeps the control's current key. */
-static void apply_key(struct settings *s, const char *name, const char *value)
+static void apply_key(struct control_map *map, int control, const char *value)
 {
-   int c = control_find(name);
    SDL_Scancode sc;
-
-   if (c < 0)
-      return;
 
    if (!*value)
    {
-      s->keys[c] = SDL_SCANCODE_UNKNOWN;
+      map->keys[control] = SDL_SCANCODE_UNKNOWN;
       return;
    }
 
    sc = SDL_GetScancodeFromName(value);
    if (sc != SDL_SCANCODE_UNKNOWN && !controls_is_reserved(sc, SDL_KMOD_NONE))
-      s->keys[c] = sc;
+      map->keys[control] = sc;
+}
+
+/* An empty value unbinds the control. An unknown name keeps the control's current gamepad input. */
+static void apply_pad(struct control_map *map, int control, const char *value)
+{
+   int input;
+
+   if (!*value)
+   {
+      map->pads[control] = PAD_UNBOUND;
+      return;
+   }
+
+   input = pad_find(value);
+   if (input != PAD_UNBOUND)
+      map->pads[control] = input;
+}
+
+/* Handles p1_key_<control>, p2_key_<control>, p1_pad_<control> and p2_pad_<control>. Other keys are ignored. */
+static void apply_binding(struct settings *s, const char *key, const char *value)
+{
+   int player;
+   int control;
+   bool pad;
+
+   if (key[0] != 'p' || key[1] < '1' || key[1] >= '1' + PLAYER_COUNT || key[2] != '_')
+      return;
+
+   player = key[1] - '1';
+   if (!strncmp(key + 3, "key_", 4))
+      pad = false;
+   else if (!strncmp(key + 3, "pad_", 4))
+      pad = true;
+   else
+      return;
+
+   control = control_find(key + 7);
+   if (control < 0)
+      return;
+
+   if (pad)
+      apply_pad(&s->bindings[player], control, value);
+   else
+      apply_key(&s->bindings[player], control, value);
 }
 
 static void apply_setting(struct settings *s, const char *key, const char *value)
@@ -206,8 +246,8 @@ static void apply_setting(struct settings *s, const char *key, const char *value
          s->system_dir = copy;
       }
    }
-   else if (!strncmp(key, "key_", 4))
-      apply_key(s, key + 4, value);
+   else
+      apply_binding(s, key, value);
 }
 
 void settings_load(struct settings *s)
@@ -242,33 +282,51 @@ void settings_load(struct settings *s)
       line = end ? end + 1 : NULL;
    }
 
-   controls_dedupe(s->keys);
+   for (int p = 0; p < PLAYER_COUNT; p++)
+      controls_dedupe(&s->bindings[p]);
    SDL_free(text);
 }
 
-#define KEY_LINE_MAX 96
+#define BINDING_LINE_MAX 96
+/* Room for every control's keyboard and gamepad line, for each player. */
+#define BINDINGS_TEXT_MAX (PLAYER_COUNT * 2 * CONTROL_COUNT * BINDING_LINE_MAX)
 
-static void format_keys(char *out, size_t size, const SDL_Scancode keys[CONTROL_COUNT])
+static void format_bindings(char *out, size_t size, const struct control_map maps[PLAYER_COUNT])
 {
    size_t used = 0;
 
-   for (int i = 0; i < CONTROL_COUNT && used < size; i++)
+   out[0] = '\0';
+   for (int p = 0; p < PLAYER_COUNT && used < size; p++)
    {
-      int n = SDL_snprintf(out + used, size - used, "key_%s = %s\n", control_name(i), SDL_GetScancodeName(keys[i]));
+      for (int c = 0; c < CONTROL_COUNT && used < size; c++)
+      {
+         const char *value = maps[p].keys[c] == SDL_SCANCODE_UNKNOWN ? "" : SDL_GetScancodeName(maps[p].keys[c]);
+         int n = SDL_snprintf(out + used, size - used, "p%d_key_%s = %s\n", p + 1, control_name(c), value);
 
-      if (n < 0)
-         break;
-      used += (size_t)n;
+         if (n < 0)
+            return;
+         used += (size_t)n;
+      }
+
+      for (int c = 0; c < CONTROL_COUNT && used < size; c++)
+      {
+         const char *value = pad_name(maps[p].pads[c]);
+         int n = SDL_snprintf(out + used, size - used, "p%d_pad_%s = %s\n", p + 1, control_name(c), value ? value : "");
+
+         if (n < 0)
+            return;
+         used += (size_t)n;
+      }
    }
 }
 
 bool settings_save(const struct settings *s)
 {
-   char keys_text[CONTROL_COUNT * KEY_LINE_MAX];
+   char bindings_text[BINDINGS_TEXT_MAX];
    char *text = NULL;
    bool ok = false;
 
-   format_keys(keys_text, sizeof keys_text, s->keys);
+   format_bindings(bindings_text, sizeof bindings_text, s->bindings);
    if (SDL_asprintf(&text,
          "# Intelliemu settings. Use key = value; unknown keys are ignored.\n"
          "# scale: initial window scale, 1-%d (-x overrides it for one run)\n"
@@ -280,10 +338,11 @@ bool settings_save(const struct settings *s)
          "muted = %d\n"
          "# state_slot: save state slot, 1-%d; also changed with F9 or the State menu\n"
          "state_slot = %d\n"
-         "# key_*: keyboard key for each control (SDL key names, e.g. Z or Keypad 5); empty means unbound\n"
+         "# p1_key_* and p2_key_*: keyboard key for each control (SDL key names, e.g. Z or Keypad 5); empty means unbound\n"
+         "# p1_pad_* and p2_pad_*: gamepad input for each control (SDL names, e.g. a or lefttrigger); empty means unbound\n"
          "%s",
          MAX_SCALE, s->scale, s->system_dir ? s->system_dir : ".",
-         s->fullscreen ? 1 : 0, s->muted ? 1 : 0, MAX_STATE_SLOT, s->state_slot, keys_text) < 0)
+         s->fullscreen ? 1 : 0, s->muted ? 1 : 0, MAX_STATE_SLOT, s->state_slot, bindings_text) < 0)
       return false;
 
    ok = config_write(SETTINGS_FILE, text);

@@ -49,7 +49,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | Menu | Items |
 | --- | --- |
 | File | Open ROM..., Close ROM, recent ROMs, Exit |
-| Emulation | Reset, Pause / Resume, Remap keys..., Restore default keys |
+| Emulation | Reset, Pause / Resume, Remap P1 keyboard..., Remap P2 keyboard..., Remap P1 gamepad..., Remap P2 gamepad..., Restore default bindings |
 | State | Save slot N, Load slot N, Next slot |
 | Video | Fullscreen |
 | Audio | Mute |
@@ -69,40 +69,49 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 
 ## Controls
 
-Keyboard, player 1:
+Keyboard defaults, player 1:
+
+| Key | Intellivision |
+| --- | --- |
+| W / A / S / D | Disc up / left / down / right |
+| Q / E | Left action / right action |
+| Tab / R | Top action / bottom action |
+| Z / X | Start / Select |
+| Return / Backspace | L / R button |
+| 1-9, 0 | Keypad 1-9, Keypad 0 |
+| C / V | Keypad Clear / Keypad Enter |
+
+Keyboard defaults, player 2:
 
 | Key | Intellivision |
 | --- | --- |
 | Arrow keys | Disc |
-| Z / X / C / V | Left action / right action / top action / last selected keypad button |
-| Q / E | Show keypad (L / R) |
-| Return | Console pause (Start) |
-| Backspace | Swap left and right controllers (Select) |
-| 0-9, `[`, `]` | Keypad |
+| Delete / Page Down | Left action / right action |
+| Home / End | Top action / bottom action |
+| Numpad / / Numpad * | Start / Select |
+| Insert / Page Up | L / R button |
+| Numpad 1-9, Numpad 0 | Keypad 1-9, Keypad 0 |
+| Numpad . / Numpad Enter | Keypad Clear / Keypad Enter |
 
-Keyboard bindings can be changed in **Emulation > Remap keys...**:
+Each player has their own bindings. A control responds to its keyboard key or its gamepad input, whichever is pressed. Within one player, each key belongs to one control, and each gamepad input belongs to one control. Binding a key or input that is already in use swaps the two controls.
 
-- Arrow keys move the selection between controls, and Return starts a rebind. Press the new key to finish.
-- Delete leaves the selected control unbound. An unbound control does nothing.
-- If the new key is already used by another control, the two bindings swap.
+Each **Remap** entry in the Emulation menu edits one player's bindings for one device: **Remap P1 keyboard...**, **Remap P2 keyboard...**, **Remap P1 gamepad...**, or **Remap P2 gamepad...**. On a remap screen:
+
+- Arrow keys move the selection. Left and Right switch between the Controller and Keypad columns. Return starts a rebind. On keyboard screens, press the new key to finish. On gamepad screens, press the new gamepad button or trigger to finish.
+- Delete leaves the selected control unbound. An unbound control does nothing from that device.
+- If the new key or gamepad input is already used by another control of that player, the two bindings swap.
 - Escape cancels a rebind, or closes the remap screen when no rebind is in progress.
 - While the remap screen is open, the game receives no input.
-- Escape, F1, F5, F9, F10, F11, and Ctrl+O/W/Q are reserved for the emulator and cannot be bound.
-- Numpad 0-9 and Numpad Enter act as their keypad control while that control has a key bound.
+- Keyboard screens: Escape, F1, F5, F9, F10, F11, and Ctrl+O/W/Q are reserved for the emulator and cannot be bound.
+- Gamepad screens are navigated with the keyboard. Gamepad input is captured only during a rebind, and buttons that SDL does not name cannot be bound.
 
-**Emulation > Restore default keys** resets every keyboard binding.
+**Emulation > Restore default bindings** resets both players' keyboard bindings to the defaults and clears every gamepad binding.
 
-Gamepad (SDL mapping, tested with an SNES controller):
-
-| Gamepad | Intellivision |
-| --- | --- |
-| D-pad | Disc |
-| Bottom / right / top / left face buttons | Right action / left action / last selected keypad button / top action |
-| Left / right shoulder | Show keypad (L / R) |
-| Start / Back | Console pause / Swap controllers |
-| Left / right stick click | Keypad 0 / Keypad 5 |
+Gamepad bindings start empty. Bind any gamepad button or trigger to any control with **Remap P1 gamepad...** or **Remap P2 gamepad...**. Player 1 uses the first connected gamepad and player 2 the second, in connection order.
 
 Controller layouts come from `gamecontrollerdb.txt`, which sits beside the `intelliemu` executable. If the file is missing, the emulator prints a warning and uses only SDL's built-in mappings.
+
+When several keypad buttons are held, the most recently pressed one that is still held is the one the core receives. Keypad buttons combine with the other controls, so a disc direction can be held while a keypad button is pressed.
 
 ## Save States
 
@@ -121,7 +130,8 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | `fullscreen` | `1` or `0` | Changed with F11 or the Video menu, saved immediately, and restored at startup. |
 | `muted` | `1` or `0` | Changed with the Audio menu. Saved immediately. |
 | `state_slot` | 1-9 | Changed with F9 or the State menu. Saved immediately. |
-| `key_<control>` | SDL key name, such as `Up`, `W`, or `Keypad 1` | One line per keyboard control, for example `key_disc_up`. An empty value leaves the control unbound. Unknown names and reserved keys keep the current binding. If two controls share a key on load, the later one is unbound. Written by Remap keys... |
+| `p1_key_<control>`, `p2_key_<control>` | SDL key name, such as `W`, `Up`, or `Keypad 1` | One line per keyboard control for each player, for example `p1_key_disc_up`. An empty value leaves the control unbound. Unknown names and reserved keys keep the current binding. If two controls of one player share a key on load, the later one is unbound. Written by the remap screens. Old `key_<control>` lines are ignored. |
+| `p1_pad_<control>`, `p2_pad_<control>` | SDL gamepad button name, such as `a`, `leftshoulder`, or `lefttrigger` | One line per gamepad control for each player, for example `p1_pad_top_action`. An empty value leaves the control unbound. Unknown names keep the current binding. Written by the remap screens. |
 
 - `recent.txt` lists recent ROM paths, newest first.
 
@@ -130,8 +140,6 @@ The emulator rewrites `config.ini` whenever it saves a setting, so hand-added ke
 ## Known Limitations
 
 - **Keypad overlays are not available.** The core's overlay needs its core option and mouse or touch input. The standalone emulator does not yet provide core options or mouse input.
-- **Gamepad buttons cannot be remapped yet.** Only keyboard bindings are configurable.
+- **The right stick is not mapped.** Its click and both triggers can be bound as gamepad inputs. The left stick drives the disc, and keypad input from a stick is not supported.
 - **ECS is not supported.**
 - **Melody Blaster and Scooby Doo** report bad opcodes and do not run yet.
-- **Analog sticks, triggers, and keypad input from the analog stick** are not mapped in the standalone emulator.
-

@@ -502,9 +502,9 @@ static void toggle_mute(void)
    settings_save(&settings);
 }
 
-static void apply_key_map(void)
+static void apply_bindings(void)
 {
-   input_set_key_map(settings.keys);
+   input_set_bindings(settings.bindings);
    settings_save(&settings);
 }
 
@@ -561,13 +561,25 @@ static void handle_menu_action(const struct menu_action *action)
       case MENU_TOGGLE_MUTE:
          toggle_mute();
          break;
-      case MENU_REMAP_KEYS:
+      case MENU_REMAP_P1_KEYS:
          menu_close();
-         remap_open(settings.keys);
+         remap_open(settings.bindings, 0, REMAP_KEYBOARD);
+         break;
+      case MENU_REMAP_P2_KEYS:
+         menu_close();
+         remap_open(settings.bindings, 1, REMAP_KEYBOARD);
+         break;
+      case MENU_REMAP_P1_PAD:
+         menu_close();
+         remap_open(settings.bindings, 0, REMAP_GAMEPAD);
+         break;
+      case MENU_REMAP_P2_PAD:
+         menu_close();
+         remap_open(settings.bindings, 1, REMAP_GAMEPAD);
          break;
       case MENU_RESET_KEYS:
-         controls_reset(settings.keys);
-         apply_key_map();
+         controls_reset(settings.bindings);
+         apply_bindings();
          break;
       default:
          break;
@@ -669,7 +681,7 @@ static void handle_event(const SDL_Event *event)
    else if (event->type == SDL_EVENT_KEY_DOWN && remap_is_open())
    {
       if (remap_handle_key(&event->key))
-         apply_key_map();
+         apply_bindings();
    }
    else if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat)
       handle_key(&event->key);
@@ -679,6 +691,9 @@ static void handle_event(const SDL_Event *event)
       handle_pointer(event->motion.x, event->motion.y, false);
    else if (event->type == open_rom_event)
       handle_dialog_result(event);
+
+   if (remap_wants_pad() && remap_handle_pad(input_pad_press_from_event(event)))
+      apply_bindings();
 
    input_handle_event(event);
 }
@@ -736,7 +751,7 @@ static int run(const struct options *opt)
    }
 
    input_init();
-   input_set_key_map(settings.keys);
+   input_set_bindings(settings.bindings);
    open_rom_event = SDL_RegisterEvents(1);
    if (!open_rom_event)
    {
@@ -807,14 +822,13 @@ static void usage(const char *prog)
          "\n"
          "settings: $XDG_CONFIG_HOME/Intelliemu/config.ini (default ~/.config/Intelliemu/config.ini)\n"
          "          -s and -x apply to this run only\n"
-         "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause, remap keys),\n"
+         "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause, remap, restore bindings),\n"
          "      State (save, load, slot), Video (fullscreen), Audio (mute)\n"
          "hotkeys: Ctrl+O open ROM, Ctrl+W close ROM, Ctrl+Q quit,\n"
          "         F1 save state, F5 load state, F9 next slot, F10 reset,\n"
          "         F11 fullscreen, Esc close menu or quit\n"
-         "keyboard (player 1): arrows = D-pad, Z/X/C/V = A/B/Y/X, Q/E = L/R,\n"
-         "         Return = start, Backspace = select, 0-9 / [ / ] = keypad\n"
-         "         rebind keys from Emulation > Remap keys...\n",
+         "keyboard defaults: P1 = WASD disc and 0-9 keypad; P2 = arrows disc and numpad keypad\n"
+         "bindings: Emulation > Remap P1/P2 keyboard or gamepad\n",
          prog, DEFAULT_CORE, MAX_SCALE);
 }
 

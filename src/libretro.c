@@ -810,6 +810,52 @@ static void process_toggle_button_input(void)
     }
 }
 
+/* Keypad digits from the frontend, per player. The mask is ORed into every controller write,
+   so keypad presses combine with the disc and buttons. */
+static int keypadMask[2];
+static uint32_t keypadChar[2];
+
+static int keypad_code(uint32_t character)
+{
+	if (character >= '1' && character <= '9')
+		return keypadStates[character - '1'];
+	if (character == '0')
+		return keypadStates[10];
+	if (character == '[')
+		return keypadStates[9]; // Clear
+	if (character == ']')
+		return keypadStates[11]; // Enter
+	return 0;
+}
+
+static void write_port(int player, int state)
+{
+	setControllerInput(player, state | keypadMask[player]);
+}
+
+void intelliemu_keypad_event(unsigned port, bool down, uint32_t character)
+{
+	int code;
+
+	if (port > 1)
+		return;
+
+	if (down)
+	{
+		code = keypad_code(character);
+		if (code)
+		{
+			keypadMask[port] = code;
+			keypadChar[port] = character;
+		}
+	}
+	else if (character == 0 || character == keypadChar[port])
+	{
+		keypadMask[port] = 0;
+		keypadChar[port] = 0;
+	}
+}
+
 // Process hotspot input and update controller state directly
 static void process_hotspot_input(void)
 {
@@ -899,7 +945,7 @@ static void process_hotspot_input(void)
     // Send hotspot input directly to controller 0 (player 1)
     if (hotspot_input)
     {
-        setControllerInput(0, hotspot_input);
+        write_port(0, hotspot_input);
     }
 }
 
@@ -914,10 +960,6 @@ int joypre0[20]; // joypad 0 previous state
 int joypre1[20]; // joypad 1 previous state
 
 bool paused = false;
-
-bool keyboardChange = false;
-bool keyboardDown = false;
-int  keyboardState = 0;
 
 // at 44.1khz, read 735 samples (44100/60) 
 // at 48khz, read 800 samples (48000/60)
@@ -943,27 +985,7 @@ void quit(int state)
 static void Keyboard(bool down, unsigned keycode,
       uint32_t character, uint16_t key_modifiers)
 {
-	/* Keyboard Input */
-	keyboardDown = down;
-	keyboardChange = true; 
-	switch (character)
-	{
-		case 48: keyboardState = keypadStates[10]; break; // 0
-		case 49: keyboardState = keypadStates[0]; break; // 1
-		case 50: keyboardState = keypadStates[1]; break; // 2
-		case 51: keyboardState = keypadStates[2]; break; // 3
-		case 52: keyboardState = keypadStates[3]; break; // 4
-		case 53: keyboardState = keypadStates[4]; break; // 5
-		case 54: keyboardState = keypadStates[5]; break; // 6
-		case 55: keyboardState = keypadStates[6]; break; // 7
-		case 56: keyboardState = keypadStates[7]; break; // 8
-		case 57: keyboardState = keypadStates[8]; break; // 9
-		case 91: keyboardState = keypadStates[9]; break; // C [
-		case 93: keyboardState = keypadStates[11]; break; // E ]
-		default: 
-			keyboardChange = false;
-			keyboardDown = false;
-	}
+	intelliemu_keypad_event(0, down, character);
 }
 
 static void update_input(void)
@@ -1269,24 +1291,24 @@ void retro_run(void)
 			if(joypad0[10] | joypad0[11]) // left/right shoulder down
 			{
 				showKeypad0 = true;
-				setControllerInput(0, getKeypadState(0, joypad0, joypre0));
+				write_port(0, getKeypadState(0, joypad0, joypre0));
 			}
 			else
 			{
 				showKeypad0 = false;
-				setControllerInput(0, getControllerState(joypad0, 0));
+				write_port(0, getControllerState(joypad0, 0));
 			}
 
 			// Player 2: L/R button shows keypad overlay
 			if(joypad1[10] | joypad1[11]) // left/right shoulder down
 			{
 				showKeypad1 = true;
-				setControllerInput(1, getKeypadState(1, joypad1, joypre1));
+				write_port(1, getKeypadState(1, joypad1, joypre1));
 			}
 			else
 			{
 				showKeypad1 = false;
-				setControllerInput(1, getControllerState(joypad1, 1));
+				write_port(1, getControllerState(joypad1, 1));
 			}
 		}
 		// MULTI-SCREEN MODE: Use overlay hotspot system
@@ -1313,26 +1335,20 @@ void retro_run(void)
 			// If no hotspots pressed, handle regular controller input
 			if (!any_hotspot_pressed)
 			{
-				setControllerInput(0, getControllerState(joypad0, 0));
+				write_port(0, getControllerState(joypad0, 0));
 			}
 
 			// Player 2 controller input (unchanged - no hotspot overlay for player 2)
 			if(joypad1[10] | joypad1[11]) // left shoulder down
 			{
 				showKeypad1 = true;
-				setControllerInput(1, getKeypadState(1, joypad1, joypre1));
+				write_port(1, getKeypadState(1, joypad1, joypre1));
 			}
 			else
 			{
 				showKeypad1 = false;
-				setControllerInput(1, getControllerState(joypad1, 1));
+				write_port(1, getControllerState(joypad1, 1));
 			}
-		}
-
-		if(keyboardDown || keyboardChange)
-		{
-			setControllerInput(0, keyboardState);
-			keyboardChange = false;
 		}
 
 		// grab frame

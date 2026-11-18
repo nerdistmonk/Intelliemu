@@ -18,7 +18,7 @@ struct settings
    bool fullscreen;
    bool muted;
    int state_slot;
-   SDL_Scancode keys[CONTROL_COUNT];
+   struct control_map bindings[PLAYER_COUNT];
 };
 
 /* Fills s with defaults, then with values from config.ini. Creates the file if it does not exist. */

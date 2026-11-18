@@ -1,6 +1,9 @@
 #ifndef INTELLIEMU_ENV_H
 #define INTELLIEMU_ENV_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "libretro.h"
 
 /*
@@ -15,5 +18,12 @@ struct intelliemu_bios_paths
    const char *grom_path;
    const char *ecs_path;
 };
+
+/*
+ * Keypad digits from the standalone frontend, called outside retro_run. port is the player (0 or 1).
+ * character is the key's text: '1'-'9', '0', '[' for Clear, ']' for Enter. A release with character 0
+ * or with the held character clears that player's keypad digit.
+ */
+void intelliemu_keypad_event(unsigned port, bool down, uint32_t character);
 
 #endif

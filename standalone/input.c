@@ -3,19 +3,13 @@
 
 #include "intelliemu.h"
 
-#define PORT_COUNT 2
 #define KEYPAD_MAX 32
-#define TRIGGER_THRESHOLD 8000
 
-struct pad_binding
-{
-   SDL_GamepadButton button;
-   unsigned id;
-};
-
+/* A keypad press that is still held. from_pad says whether code is a gamepad input or a keyboard scancode. */
 struct held_key
 {
-   SDL_Scancode scancode;
+   bool from_pad;
+   int code;
    uint32_t character;
 };
 
@@ -35,46 +29,34 @@ static const unsigned joypad_ids[CONTROL_JOYPAD_COUNT] = {
    RETRO_DEVICE_ID_JOYPAD_R,
 };
 
-/* Copied from the config by input_set_key_map(). Unbound controls are SDL_SCANCODE_UNKNOWN. */
-static SDL_Scancode key_for[CONTROL_COUNT];
+/* Set by input_set_bindings(). Player N uses the Nth connected gamepad, in connection order. */
+/* Set by input_set_bindings(). Player N uses the Nth connected gamepad, in connection order. */
+static struct control_map maps[PLAYER_COUNT];
 
-static const struct pad_binding pad_bindings[] = {
-   { SDL_GAMEPAD_BUTTON_DPAD_UP,        RETRO_DEVICE_ID_JOYPAD_UP },
-   { SDL_GAMEPAD_BUTTON_DPAD_DOWN,      RETRO_DEVICE_ID_JOYPAD_DOWN },
-   { SDL_GAMEPAD_BUTTON_DPAD_LEFT,      RETRO_DEVICE_ID_JOYPAD_LEFT },
-   { SDL_GAMEPAD_BUTTON_DPAD_RIGHT,     RETRO_DEVICE_ID_JOYPAD_RIGHT },
-   { SDL_GAMEPAD_BUTTON_SOUTH,          RETRO_DEVICE_ID_JOYPAD_B },
-   { SDL_GAMEPAD_BUTTON_EAST,           RETRO_DEVICE_ID_JOYPAD_A },
-   { SDL_GAMEPAD_BUTTON_NORTH,          RETRO_DEVICE_ID_JOYPAD_X },
-   { SDL_GAMEPAD_BUTTON_WEST,           RETRO_DEVICE_ID_JOYPAD_Y },
-   { SDL_GAMEPAD_BUTTON_START,          RETRO_DEVICE_ID_JOYPAD_START },
-   { SDL_GAMEPAD_BUTTON_BACK,           RETRO_DEVICE_ID_JOYPAD_SELECT },
-   { SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,  RETRO_DEVICE_ID_JOYPAD_L },
-   { SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, RETRO_DEVICE_ID_JOYPAD_R },
-   { SDL_GAMEPAD_BUTTON_LEFT_STICK,     RETRO_DEVICE_ID_JOYPAD_L3 },
-   { SDL_GAMEPAD_BUTTON_RIGHT_STICK,    RETRO_DEVICE_ID_JOYPAD_R3 },
-};
-
-static SDL_Gamepad *pads[PORT_COUNT];
+static SDL_Gamepad *pads[PLAYER_COUNT];
 
 /* Snapshot taken in frontend_input_poll so each retro_run sees one consistent state. */
 static struct
 {
-   uint16_t buttons[PORT_COUNT];
-   int16_t axes[PORT_COUNT][2][2];
+   uint16_t buttons[PLAYER_COUNT];
+   int16_t stick[PLAYER_COUNT][2];
 } snapshot;
 
-static struct held_key held[KEYPAD_MAX];
-static int held_count;
+/* Keypad presses still held, per player. The top entry is the one the core is told about. */
+static struct held_key held[PLAYER_COUNT][KEYPAD_MAX];
+static int held_count[PLAYER_COUNT];
 
-/* What the core was last told about the keypad, so keypad_sync() only sends changes. */
-static bool keypad_sent_down;
-static uint32_t keypad_sent_char;
+/* What the core was last told about each player's keypad, so keypad_sync() only sends changes. */
+static bool keypad_sent_down[PLAYER_COUNT];
+static uint32_t keypad_sent_char[PLAYER_COUNT];
 /* Set from a keypad press until the core has run, so a release can't hide the press. */
-static bool keypad_unseen;
+static bool keypad_unseen[PLAYER_COUNT];
 
 /* Joypad presses that began and ended between two core polls, OR'd into the next poll. */
-static uint16_t latched[PORT_COUNT];
+static uint16_t latched[PLAYER_COUNT];
+
+/* Trigger pressed state per player: [0] left, [1] right. Follows the physical trigger even while blocked. */
+static bool trigger_down[PLAYER_COUNT][2];
 
 /* While blocked (menu open, paused, or no game), the core sees no input. Releases still count. */
 static bool blocked;
@@ -98,130 +80,195 @@ static uint32_t keypad_character(int control)
    }
 }
 
-/* Numpad keys work as extra keys for their keypad button, but only while that button is bound. */
-static int numpad_alias(SDL_Scancode sc)
+static void keypad_send(int port, bool down, uint32_t character)
 {
-   if (sc >= SDL_SCANCODE_KP_1 && sc <= SDL_SCANCODE_KP_9)
-      return CONTROL_KEYPAD_1 + (sc - SDL_SCANCODE_KP_1);
-   if (sc == SDL_SCANCODE_KP_0)
-      return CONTROL_KEYPAD_0;
-   if (sc == SDL_SCANCODE_KP_ENTER)
-      return CONTROL_KEYPAD_ENTER;
-   return -1;
-}
-
-/* An explicit binding wins over a numpad alias. Returns -1 if the key does nothing. */
-static int control_for_key(SDL_Scancode sc)
-{
-   int control;
-
-   if (sc == SDL_SCANCODE_UNKNOWN)
-      return -1;
-
-   for (control = 0; control < CONTROL_COUNT; control++)
-      if (key_for[control] == sc)
-         return control;
-
-   control = numpad_alias(sc);
-   if (control >= 0 && key_for[control] != SDL_SCANCODE_UNKNOWN)
-      return control;
-
-   return -1;
-}
-
-static void keypad_send(bool down, uint32_t character)
-{
-   keypad_sent_down = down;
-   keypad_sent_char = down ? character : 0;
-   core_keyboard_event(down, character);
+   keypad_sent_down[port] = down;
+   keypad_sent_char[port] = down ? character : 0;
+   core_keypad_event((unsigned)port, down, character);
 }
 
 /* The core only remembers the last key it was sent, so when the newest key lifts,
  * the key beneath it is sent again. */
-static void keypad_sync(void)
+static void keypad_sync(int port)
 {
-   bool down = held_count > 0;
-   uint32_t character = down ? held[held_count - 1].character : 0;
+   bool down = held_count[port] > 0;
+   uint32_t character = down ? held[port][held_count[port] - 1].character : 0;
 
-   if (down == keypad_sent_down && character == keypad_sent_char)
+   if (down == keypad_sent_down[port] && character == keypad_sent_char[port])
       return;
 
-   keypad_send(down, character);
+   keypad_send(port, down, character);
 }
 
-static void keypad_press(SDL_Scancode sc, uint32_t character)
+static void keypad_press(int port, bool from_pad, int code, uint32_t character)
 {
+   struct held_key *entry;
    int i;
 
-   if (held_count == KEYPAD_MAX)
+   if (held_count[port] == KEYPAD_MAX)
       return;
 
-   for (i = 0; i < held_count; i++)
-      if (held[i].scancode == sc)
+   for (i = 0; i < held_count[port]; i++)
+      if (held[port][i].from_pad == from_pad && held[port][i].code == code)
          return;
 
-   held[held_count].scancode = sc;
-   held[held_count].character = character;
-   held_count++;
-   keypad_unseen = true;
-   keypad_send(true, character);
+   entry = &held[port][held_count[port]++];
+   entry->from_pad = from_pad;
+   entry->code = code;
+   entry->character = character;
+   keypad_unseen[port] = true;
+   keypad_sync(port);
 }
 
-static void keypad_release(SDL_Scancode sc)
+static void keypad_release(int port, bool from_pad, int code)
 {
    int i;
 
-   for (i = 0; i < held_count; i++)
-      if (held[i].scancode == sc)
+   for (i = 0; i < held_count[port]; i++)
+      if (held[port][i].from_pad == from_pad && held[port][i].code == code)
          break;
 
-   if (i == held_count)
+   if (i == held_count[port])
       return;
 
-   held_count--;
-   memmove(&held[i], &held[i + 1], (size_t)(held_count - i) * sizeof(held[0]));
+   held_count[port]--;
+   memmove(&held[port][i], &held[port][i + 1], (size_t)(held_count[port] - i) * sizeof(held[0][0]));
 
    /* Deferred until input_after_run() so the core still sees a press that ended this frame. */
-   if (!keypad_unseen)
-      keypad_sync();
+   if (!keypad_unseen[port])
+      keypad_sync(port);
 }
 
-static void latch_control(int control)
+/* Drops a port's gamepad keypad presses, for when its gamepad is removed. */
+static void keypad_drop_pad_entries(int port)
 {
-   if (control >= 0 && control < CONTROL_JOYPAD_COUNT)
-      latched[0] |= (uint16_t)(1u << joypad_ids[control]);
-}
+   int i;
+   int kept = 0;
 
-static void latch_pad_button(SDL_JoystickID id, SDL_GamepadButton button)
-{
-   size_t i;
-   int port;
+   for (i = 0; i < held_count[port]; i++)
+      if (!held[port][i].from_pad)
+         held[port][kept++] = held[port][i];
 
-   for (port = 0; port < PORT_COUNT; port++)
-      if (pads[port] && SDL_GetGamepadID(pads[port]) == id)
-         break;
-
-   if (port == PORT_COUNT)
+   if (kept == held_count[port])
       return;
 
-   for (i = 0; i < SDL_arraysize(pad_bindings); i++)
-      if (pad_bindings[i].button == button)
-         latched[port] |= (uint16_t)(1u << pad_bindings[i].id);
+   held_count[port] = kept;
+   if (!keypad_unseen[port])
+      keypad_sync(port);
+}
+
+/* Returns the player whose gamepad this is, or -1. */
+static int port_for_pad(SDL_JoystickID id)
+{
+   int port;
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+      if (pads[port] && SDL_GetGamepadID(pads[port]) == id)
+         return port;
+
+   return -1;
+}
+
+static bool pad_held(SDL_Gamepad *pad, int input)
+{
+   if (!pad || input < 0 || input > PAD_RIGHT_TRIGGER)
+      return false;
+
+   if (input == PAD_LEFT_TRIGGER)
+      return SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > PAD_TRIGGER_THRESHOLD;
+   if (input == PAD_RIGHT_TRIGGER)
+      return SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > PAD_TRIGGER_THRESHOLD;
+
+   return SDL_GetGamepadButton(pad, (SDL_GamepadButton)input);
+}
+
+static void latch_control(int port, int control)
+{
+   if (control < CONTROL_JOYPAD_COUNT)
+      latched[port] |= (uint16_t)(1u << joypad_ids[control]);
+}
+
+/* Applies a press of one control. Joypad controls latch; keypad controls push a keypad entry. */
+static void control_press(int port, bool from_pad, int code, int control)
+{
+   if (control < CONTROL_JOYPAD_COUNT)
+      latch_control(port, control);
+   else
+      keypad_press(port, from_pad, code, keypad_character(control));
+}
+
+static void key_pressed(SDL_Scancode sc)
+{
+   int port;
+   int control;
+
+   if (sc == SDL_SCANCODE_UNKNOWN || blocked)
+      return;
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+      for (control = 0; control < CONTROL_COUNT; control++)
+         if (maps[port].keys[control] == sc)
+            control_press(port, false, sc, control);
+}
+
+static void pad_input_event(int port, int input, bool down)
+{
+   int control;
+
+   if (!down)
+   {
+      keypad_release(port, true, input);
+      return;
+   }
+
+   if (blocked)
+      return;
+
+   for (control = 0; control < CONTROL_COUNT; control++)
+      if (maps[port].pads[control] == input)
+         control_press(port, true, input, control);
+}
+
+/* Follows a trigger across the threshold. Updates even while blocked; pad_input_event() gates presses. */
+static void trigger_edge(int port, int t, bool down)
+{
+   if (trigger_down[port][t] == down)
+      return;
+
+   trigger_down[port][t] = down;
+   pad_input_event(port, PAD_LEFT_TRIGGER + t, down);
+}
+
+/* Re-reads a player's trigger state from the hardware. A trigger that is still held after a
+ * reset does not press again until it is released and pressed. */
+static void trigger_sync(int port)
+{
+   static const SDL_GamepadAxis axes[2] = { SDL_GAMEPAD_AXIS_LEFT_TRIGGER, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER };
+   int t;
+
+   for (t = 0; t < 2; t++)
+   {
+      bool down = pads[port] && SDL_GetGamepadAxis(pads[port], axes[t]) > PAD_TRIGGER_THRESHOLD;
+
+      if (trigger_down[port][t] && !down)
+         pad_input_event(port, PAD_LEFT_TRIGGER + t, false);
+      trigger_down[port][t] = down;
+   }
 }
 
 static void gamepad_added(SDL_JoystickID id)
 {
    int port;
 
-   for (port = 0; port < PORT_COUNT; port++)
-      if (pads[port] && SDL_GetGamepadID(pads[port]) == id)
-         return;
+   if (port_for_pad(id) >= 0)
+      return;
 
-   for (port = 0; port < PORT_COUNT; port++)
+   for (port = 0; port < PLAYER_COUNT; port++)
    {
       if (!pads[port])
       {
          pads[port] = SDL_OpenGamepad(id);
+         trigger_sync(port);
          return;
       }
    }
@@ -229,16 +276,15 @@ static void gamepad_added(SDL_JoystickID id)
 
 static void gamepad_removed(SDL_JoystickID id)
 {
-   int port;
+   int port = port_for_pad(id);
 
-   for (port = 0; port < PORT_COUNT; port++)
-   {
-      if (pads[port] && SDL_GetGamepadID(pads[port]) == id)
-      {
-         SDL_CloseGamepad(pads[port]);
-         pads[port] = NULL;
-      }
-   }
+   if (port < 0)
+      return;
+
+   keypad_drop_pad_entries(port);
+   SDL_CloseGamepad(pads[port]);
+   pads[port] = NULL;
+   memset(trigger_down[port], 0, sizeof(trigger_down[port]));
 }
 
 static void load_gamepad_mappings(void)
@@ -255,9 +301,9 @@ static void load_gamepad_mappings(void)
    SDL_free(path);
 }
 
-void input_set_key_map(const SDL_Scancode keys[CONTROL_COUNT])
+void input_set_bindings(const struct control_map bindings[PLAYER_COUNT])
 {
-   memcpy(key_for, keys, sizeof(key_for));
+   memcpy(maps, bindings, sizeof(maps));
 }
 
 void input_init(void)
@@ -282,7 +328,7 @@ void input_shutdown(void)
 {
    int port;
 
-   for (port = 0; port < PORT_COUNT; port++)
+   for (port = 0; port < PLAYER_COUNT; port++)
    {
       if (pads[port])
       {
@@ -291,21 +337,33 @@ void input_shutdown(void)
       }
    }
 
-   held_count = 0;
+   memset(held_count, 0, sizeof(held_count));
+   memset(trigger_down, 0, sizeof(trigger_down));
 }
 
 void input_release_all(void)
 {
-   held_count = 0;
-   keypad_unseen = false;
-   keypad_sync();
-   memset(latched, 0, sizeof(latched));
+   int port;
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+   {
+      held_count[port] = 0;
+      keypad_unseen[port] = false;
+      keypad_sync(port);
+      latched[port] = 0;
+      trigger_sync(port);
+   }
 }
 
 void input_after_run(void)
 {
-   keypad_unseen = false;
-   keypad_sync();
+   int port;
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+   {
+      keypad_unseen[port] = false;
+      keypad_sync(port);
+   }
 }
 
 void input_set_blocked(bool value)
@@ -320,22 +378,18 @@ void input_set_blocked(bool value)
 
 void input_handle_event(const SDL_Event *event)
 {
+   int port;
+
    switch (event->type)
    {
       case SDL_EVENT_KEY_DOWN:
-         if (!event->key.repeat && !blocked)
-         {
-            int control = control_for_key(event->key.scancode);
-            uint32_t character = control >= 0 ? keypad_character(control) : 0;
-
-            if (character)
-               keypad_press(event->key.scancode, character);
-            latch_control(control);
-         }
+         if (!event->key.repeat)
+            key_pressed(event->key.scancode);
          break;
 
       case SDL_EVENT_KEY_UP:
-         keypad_release(event->key.scancode);
+         for (port = 0; port < PLAYER_COUNT; port++)
+            keypad_release(port, false, event->key.scancode);
          break;
 
       case SDL_EVENT_GAMEPAD_ADDED:
@@ -347,8 +401,28 @@ void input_handle_event(const SDL_Event *event)
          break;
 
       case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-         if (!blocked)
-            latch_pad_button(event->gbutton.which, (SDL_GamepadButton)event->gbutton.button);
+         port = port_for_pad(event->gbutton.which);
+         if (port >= 0)
+            pad_input_event(port, event->gbutton.button, true);
+         break;
+
+      case SDL_EVENT_GAMEPAD_BUTTON_UP:
+         port = port_for_pad(event->gbutton.which);
+         if (port >= 0)
+            pad_input_event(port, event->gbutton.button, false);
+         break;
+
+      case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+         port = port_for_pad(event->gaxis.which);
+         if (port >= 0)
+         {
+            bool down = event->gaxis.value > PAD_TRIGGER_THRESHOLD;
+
+            if (event->gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER)
+               trigger_edge(port, 0, down);
+            else if (event->gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
+               trigger_edge(port, 1, down);
+         }
          break;
 
       case SDL_EVENT_WINDOW_FOCUS_LOST:
@@ -360,12 +434,29 @@ void input_handle_event(const SDL_Event *event)
    }
 }
 
+/* Returns the gamepad input in this event that capture should bind, or PAD_UNBOUND.
+ * Stateless, so it does not track trigger edges. */
+int input_pad_press_from_event(const SDL_Event *event)
+{
+   if (event->type == SDL_EVENT_GAMEPAD_BUTTON_DOWN)
+      return pad_name(event->gbutton.button) ? event->gbutton.button : PAD_UNBOUND;
+
+   if (event->type == SDL_EVENT_GAMEPAD_AXIS_MOTION && event->gaxis.value > PAD_TRIGGER_THRESHOLD)
+   {
+      if (event->gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER)
+         return PAD_LEFT_TRIGGER;
+      if (event->gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
+         return PAD_RIGHT_TRIGGER;
+   }
+
+   return PAD_UNBOUND;
+}
+
 void frontend_input_poll(void)
 {
-   const bool *keys;
-   uint16_t keyboard_bits = 0;
-   size_t i;
+   const bool *keys = SDL_GetKeyboardState(NULL);
    int port;
+   int control;
 
    if (blocked)
    {
@@ -374,51 +465,38 @@ void frontend_input_poll(void)
       return;
    }
 
-   keys = SDL_GetKeyboardState(NULL);
-   for (i = 0; i < CONTROL_JOYPAD_COUNT; i++)
-      if (key_for[i] != SDL_SCANCODE_UNKNOWN && keys[key_for[i]])
-         keyboard_bits |= (uint16_t)(1u << joypad_ids[i]);
-
-   for (port = 0; port < PORT_COUNT; port++)
+   for (port = 0; port < PLAYER_COUNT; port++)
    {
       SDL_Gamepad *pad = pads[port];
-      uint16_t bits = (port == 0) ? keyboard_bits : 0;
+      uint16_t bits = 0;
 
-      memset(snapshot.axes[port], 0, sizeof(snapshot.axes[port]));
-
-      if (pad)
+      for (control = 0; control < CONTROL_JOYPAD_COUNT; control++)
       {
-         for (i = 0; i < SDL_arraysize(pad_bindings); i++)
-            if (SDL_GetGamepadButton(pad, pad_bindings[i].button))
-               bits |= (uint16_t)(1u << pad_bindings[i].id);
+         SDL_Scancode sc = maps[port].keys[control];
 
-         if (SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > TRIGGER_THRESHOLD)
-            bits |= (uint16_t)(1u << RETRO_DEVICE_ID_JOYPAD_L2);
-         if (SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > TRIGGER_THRESHOLD)
-            bits |= (uint16_t)(1u << RETRO_DEVICE_ID_JOYPAD_R2);
-
-         snapshot.axes[port][0][0] = SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTX);
-         snapshot.axes[port][0][1] = SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTY);
-         snapshot.axes[port][1][0] = SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHTX);
-         snapshot.axes[port][1][1] = SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHTY);
+         if ((sc != SDL_SCANCODE_UNKNOWN && keys[sc]) || pad_held(pad, maps[port].pads[control]))
+            bits |= (uint16_t)(1u << joypad_ids[control]);
       }
 
       bits |= latched[port];
       latched[port] = 0;
       snapshot.buttons[port] = bits;
+
+      snapshot.stick[port][0] = pad ? SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTX) : 0;
+      snapshot.stick[port][1] = pad ? SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTY) : 0;
    }
 }
 
 int16_t frontend_input_state(unsigned port, unsigned device, unsigned index, unsigned id)
 {
-   if (port >= PORT_COUNT)
+   if (port >= PLAYER_COUNT)
       return 0;
 
    if (device == RETRO_DEVICE_JOYPAD)
       return (id < 16 && ((snapshot.buttons[port] >> id) & 1u)) ? 1 : 0;
 
-   if (device == RETRO_DEVICE_ANALOG && index < 2 && id < 2)
-      return snapshot.axes[port][index][id];
+   if (device == RETRO_DEVICE_ANALOG && index == RETRO_DEVICE_INDEX_ANALOG_LEFT && id < 2)
+      return snapshot.stick[port][id];
 
    return 0;
 }

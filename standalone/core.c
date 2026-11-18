@@ -29,10 +29,6 @@ static bool RETRO_CALLCONV environment_cb(unsigned cmd, void *data)
          return true;
       }
 
-      case RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK:
-         g_core->keyboard = *(const struct retro_keyboard_callback *)data;
-         return true;
-
       default:
          return false;
    }
@@ -128,6 +124,7 @@ bool core_open(core_t *core, const char *library, const char *system_dir, const 
    LOAD_SYMBOL(serialize_size, "retro_serialize_size");
    LOAD_SYMBOL(serialize, "retro_serialize");
    LOAD_SYMBOL(unserialize, "retro_unserialize");
+   LOAD_SYMBOL(keypad_event, "intelliemu_keypad_event");
 
    if (core->api_version() != RETRO_API_VERSION)
    {
@@ -199,8 +196,8 @@ void core_close(core_t *core)
    memset(core, 0, sizeof(*core));
 }
 
-void core_keyboard_event(bool down, uint32_t character)
+void core_keypad_event(unsigned port, bool down, uint32_t character)
 {
-   if (g_core && g_core->keyboard.callback)
-      g_core->keyboard.callback(down, RETROK_UNKNOWN, character, 0);
+   if (g_core && g_core->keypad_event)
+      g_core->keypad_event(port, down, character);
 }
