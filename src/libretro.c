@@ -1078,14 +1078,13 @@ static void check_variables(bool first_run)
 		var.key   = "default_p1_controller";
 		var.value = NULL;
 
-		// by default input 0 maps to Right Controller (0x1FE)
-		// and input 1 maps to Left Controller (0x1FF)
-		controllerSwap = 0;
+		// by default input 1 (Left pad) drives 0x1FE, the controller games read as Player 1,
+		// and input 0 (Right pad) drives 0x1FF
+		controllerSwap = 1;
 
 		if (Environ(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
 		{
-			if (strcmp(var.value, "left") == 0)
-				controllerSwap = 1;
+			controllerSwap = (strcmp(var.value, "left") == 0) ? 1 : 0;
 		}
 
 		// Check multi-screen overlay option
@@ -1274,7 +1273,7 @@ void retro_run(void)
 			OSD_drawTextBG(3, 12, " LT/RT  - KEYPAD CLEAR/ENTER          ");
 			OSD_drawTextBG(3, 13, "                                      ");
 			OSD_drawTextBG(3, 14, " START  - PAUSE GAME                  ");
-			OSD_drawTextBG(3, 15, " SELECT - SWAP LEFT/RIGHT CONTROLLERS ");
+			OSD_drawTextBG(3, 15, "                                      ");
 			OSD_drawTextBG(3, 16, "                                      ");
 			OSD_drawTextBG(3, 17, " freeintv 1.2          LICENSE GPL V2+");
 			OSD_drawTextBG(3, 18, "                                      ");

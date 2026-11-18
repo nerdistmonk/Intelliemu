@@ -66,9 +66,9 @@ struct retro_core_option_v2_category option_cats_us[] = {
 struct retro_core_option_v2_definition option_defs_us[] = {
    {
       "default_p1_controller",
-      "Default Player 1 Controller (Restart)",
+      "Default Player 1 Gamepad Port (Restart)",
       NULL,
-      "Specify whether the Left or Right Controller is set to Player 1 as the default.",
+      "Specify whether the Left or Right gamepad port is Player 1 by default. The other port is Player 2.",
       NULL,
       "input",
       {
@@ -76,7 +76,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          { "right", "Right" },
          { NULL, NULL },
       },
-      "right"
+      "left"
    },
    {
       "freeintv_multiscreen_overlay",

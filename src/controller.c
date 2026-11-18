@@ -71,9 +71,9 @@ int getQuickKeypadState(int player);
 
 void controllerInit()
 {
-	controllerSwap = 0;
-	// by default input 0 maps to Right Controller (0x1FE)
-	// and input 1 maps to Left Controller (0x1FF)
+	controllerSwap = 1;
+	// by default input 1 (Left gamepad port) drives 0x1FE, the slot games read as Player 1,
+	// and input 0 (Right gamepad port) drives 0x1FF
 }
 
 void setControllerInput(int player, int state)
