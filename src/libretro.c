@@ -811,7 +811,6 @@ static void process_toggle_button_input(void)
 // Process hotspot input and update controller state directly
 static void process_hotspot_input(void)
 {
-    static int call_count = 0;
     int16_t ptr_x_normalized;
     int16_t ptr_y_normalized;
     int mouse_button;
@@ -822,8 +821,6 @@ static void process_hotspot_input(void)
     int hotspot_x;
     int is_over;
     int hotspot_input;
-    
-    call_count++;
     
     // Get pointer/touchscreen input (RETRO_DEVICE_POINTER for touchscreen on Android)
     // Pointer returns coordinates in -32767 to 32767 range (normalized, not pixel coords)

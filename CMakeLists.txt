@@ -52,7 +52,7 @@ target_compile_definitions(freeintv_libretro PRIVATE __LIBRETRO__)
 target_compile_options(freeintv_libretro PRIVATE
     -Wno-sign-compare -Wunused -Wpointer-arith -Wbad-function-cast
     -Wcast-align -Waggregate-return -Wshadow -Wstrict-prototypes
-    -Wformat-security -Wwrite-strings -Wdisabled-optimization
+    -Wformat -Wformat-security -Wwrite-strings -Wdisabled-optimization
     -fstrict-aliasing
     $<$<CONFIG:Debug>:-Wno-unused>
     $<$<CONFIG:Release>:-O2>
