@@ -25,6 +25,10 @@
 #define DEFAULT_WIDTH 352
 #define DEFAULT_HEIGHT 224
 #define DEBUG_CHAR_W 8
+#define DEBUG_CHAR_H 8
+#define ABOUT_PAD 8
+#define ABOUT_LINE_H 12
+#define ABOUT_COLS 96
 #define STAGE_FRAMES 4096
 #define AUDIO_LEAD_FRAMES 3
 #define DIALOG_RESULT 0
@@ -71,6 +75,7 @@ static bool xbrz_on(void)
 {
    return xbrz_override >= 0 ? xbrz_override : settings.xbrz;
 }
+static bool about_open;
 static bool dialog_pending;
 static Uint32 open_rom_event;
 static char status[64];
@@ -468,6 +473,89 @@ static void draw_centered(float y, const char *text)
    SDL_RenderDebugText(renderer, x < 0 ? 0 : x, y, text);
 }
 
+static const char about_text[] =
+   "IntelliEmu Version 1.0\n"
+   "\n"
+   "Designed by R.Shaklfrd and Claude Haiku\n"
+   "\n"
+   "Originally based on David Richardson's FreeIntv\n"
+   "Uses IntelliVoice code designed by Joe Zbiciak and Oscar Toledo G\n"
+   "\n"
+   "Released under GPL2 Licensing";
+
+/* Word-wraps about_text to cols characters per line. Blank lines in the text are kept. */
+static void draw_about_text(float x, float y, int cols)
+{
+   char line[ABOUT_COLS + 1];
+   const char *para = about_text;
+
+   for (;;)
+   {
+      const char *end = strchr(para, '\n');
+      const char *w = para;
+      int len = 0;
+
+      if (!end)
+         end = para + strlen(para);
+
+      while (w < end)
+      {
+         const char *word;
+         size_t wl;
+
+         while (w < end && *w == ' ')
+            w++;
+         word = w;
+         while (w < end && *w != ' ')
+            w++;
+         wl = (size_t)(w - word);
+         if (wl == 0)
+            break;
+         if (wl > (size_t)cols)
+            wl = (size_t)cols;
+
+         if (len > 0 && len + 1 + (int)wl > cols)
+         {
+            line[len] = '\0';
+            SDL_RenderDebugText(renderer, x, y, line);
+            y += ABOUT_LINE_H;
+            len = 0;
+         }
+         if (len > 0)
+            line[len++] = ' ';
+         memcpy(line + len, word, wl);
+         len += (int)wl;
+      }
+
+      line[len] = '\0';
+      SDL_RenderDebugText(renderer, x, y, line);
+      y += ABOUT_LINE_H;
+
+      if (!*end)
+         break;
+      para = end + 1;
+   }
+}
+
+static void draw_about(unsigned bar)
+{
+   const float top = (float)bar;
+   const float height = (float)view_height();
+   SDL_FRect panel = { 0, top, (float)pic_w, height };
+   int cols = ((int)pic_w - 2 * ABOUT_PAD) / DEBUG_CHAR_W;
+
+   if (cols > ABOUT_COLS)
+      cols = ABOUT_COLS;
+
+   SDL_SetRenderDrawColor(renderer, 24, 24, 28, 255);
+   SDL_RenderFillRect(renderer, &panel);
+
+   SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+   draw_about_text(ABOUT_PAD, top + ABOUT_PAD, cols);
+   SDL_RenderDebugText(renderer, ABOUT_PAD, top + height - ABOUT_PAD - DEBUG_CHAR_H,
+         "Press any key or click to close");
+}
+
 static void render(void)
 {
    struct menu_state state;
@@ -504,6 +592,9 @@ static void render(void)
 
       remap_render(renderer, (int)pic_w, (int)(view_height() + bar), (int)bar, pad_names);
    }
+
+   if (about_open)
+      draw_about(bar);
 
    if (!bar)
    {
@@ -798,17 +889,7 @@ static void cycle_state_slot(void)
 
 static void show_about(void)
 {
-   static const char about_text[] =
-      "IntelliEmu Version 1.0\n"
-      "\n"
-      "Designed by R.Shaklfrd and Claude Haiku\n"
-      "\n"
-      "Originally based on David Richardson's FreeIntv\n"
-      "Uses IntelliVoice code designed by Joe Zbiciak and Oscar Toledo G\n"
-      "\n"
-      "Released under GPL2 Licensing";
-
-   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "About IntelliEmu", about_text, window);
+   about_open = true;
 }
 
 static void handle_menu_action(const struct menu_action *action)
@@ -1038,6 +1119,12 @@ static void handle_event(const SDL_Event *event)
 {
    if (event->type == SDL_EVENT_QUIT)
       quit_requested = true;
+   else if (about_open && (event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
+            event->type == SDL_EVENT_GAMEPAD_BUTTON_DOWN))
+   {
+      about_open = false;
+      return;
+   }
    else if (event->type == SDL_EVENT_KEY_DOWN && remap_is_open())
    {
       if (remap_handle_key(&event->key))
@@ -1063,7 +1150,7 @@ static void handle_event(const SDL_Event *event)
 
 static void update_input_block(void)
 {
-   input_set_blocked(menu_is_open() || remap_is_open() || paused || !game_running());
+   input_set_blocked(menu_is_open() || about_open || remap_is_open() || paused || !game_running());
 }
 
 static void main_loop(long max_frames)
