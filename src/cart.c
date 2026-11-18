@@ -482,6 +482,13 @@ int getLoadMethod() // lazy, but it works
 		if(fingerprint==fingerprints[i])
 		{
 			printf("[INFO] [FREEINTV] Cartridge database match: memory map %i\n", fingerprints[i+1]);
+			if(fingerprint==15043)
+			{
+				// World Series [!] and [b1] share a fingerprint; file size picks the layout
+				if(size==49152) { return 5; }
+				if(size==40960) { return 2; }
+				return fingerprints[i+1];
+			}
 			if(fingerprint==11349)
 			{
 				// Baseball or MTE Test Cart?
