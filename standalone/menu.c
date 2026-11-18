@@ -123,6 +123,9 @@ static int build_items(int title, const struct menu_state *state, struct menu_it
          add_item(items, &n, "Reset", "F10", MENU_RESET, 0, state->game_running);
          add_item(items, &n, state->paused ? "Resume" : "Pause", NULL, MENU_TOGGLE_PAUSE, 0,
                state->game_running);
+         add_separator(items, &n);
+         add_item(items, &n, "Remap keys...", NULL, MENU_REMAP_KEYS, 0, true);
+         add_item(items, &n, "Restore default keys", NULL, MENU_RESET_KEYS, 0, true);
          break;
 
       case 2:

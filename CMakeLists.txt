@@ -84,10 +84,12 @@ if(INTELLIEMU_STANDALONE)
         standalone/main.c
         standalone/config.c
         standalone/bios.c
+        standalone/controls.c
         standalone/core.c
         standalone/input.c
         standalone/recent.c
         standalone/menu.c
+        standalone/remap.c
     )
 
     set_target_properties(intelliemu PROPERTIES

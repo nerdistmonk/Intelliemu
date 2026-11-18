@@ -131,6 +131,7 @@ static void settings_defaults(struct settings *s)
    s->fullscreen = false;
    s->muted = false;
    s->state_slot = 1;
+   controls_reset(s->keys);
 }
 
 static char *trim(char *text)
@@ -152,6 +153,26 @@ static void apply_flag(bool *flag, const char *value)
 {
    if (!strcmp(value, "0") || !strcmp(value, "1"))
       *flag = value[0] == '1';
+}
+
+/* An empty value unbinds the control. An unknown or reserved name keeps the control's current key. */
+static void apply_key(struct settings *s, const char *name, const char *value)
+{
+   int c = control_find(name);
+   SDL_Scancode sc;
+
+   if (c < 0)
+      return;
+
+   if (!*value)
+   {
+      s->keys[c] = SDL_SCANCODE_UNKNOWN;
+      return;
+   }
+
+   sc = SDL_GetScancodeFromName(value);
+   if (sc != SDL_SCANCODE_UNKNOWN && !controls_is_reserved(sc, SDL_KMOD_NONE))
+      s->keys[c] = sc;
 }
 
 static void apply_setting(struct settings *s, const char *key, const char *value)
@@ -185,6 +206,8 @@ static void apply_setting(struct settings *s, const char *key, const char *value
          s->system_dir = copy;
       }
    }
+   else if (!strncmp(key, "key_", 4))
+      apply_key(s, key + 4, value);
 }
 
 void settings_load(struct settings *s)
@@ -219,14 +242,33 @@ void settings_load(struct settings *s)
       line = end ? end + 1 : NULL;
    }
 
+   controls_dedupe(s->keys);
    SDL_free(text);
+}
+
+#define KEY_LINE_MAX 96
+
+static void format_keys(char *out, size_t size, const SDL_Scancode keys[CONTROL_COUNT])
+{
+   size_t used = 0;
+
+   for (int i = 0; i < CONTROL_COUNT && used < size; i++)
+   {
+      int n = SDL_snprintf(out + used, size - used, "key_%s = %s\n", control_name(i), SDL_GetScancodeName(keys[i]));
+
+      if (n < 0)
+         break;
+      used += (size_t)n;
+   }
 }
 
 bool settings_save(const struct settings *s)
 {
+   char keys_text[CONTROL_COUNT * KEY_LINE_MAX];
    char *text = NULL;
    bool ok = false;
 
+   format_keys(keys_text, sizeof keys_text, s->keys);
    if (SDL_asprintf(&text,
          "# Intelliemu settings. Use key = value; unknown keys are ignored.\n"
          "# scale: initial window scale, 1-%d (-x overrides it for one run)\n"
@@ -237,9 +279,11 @@ bool settings_save(const struct settings *s)
          "fullscreen = %d\n"
          "muted = %d\n"
          "# state_slot: save state slot, 1-%d; also changed with F9 or the State menu\n"
-         "state_slot = %d\n",
+         "state_slot = %d\n"
+         "# key_*: keyboard key for each control (SDL key names, e.g. Z or Keypad 5); empty means unbound\n"
+         "%s",
          MAX_SCALE, s->scale, s->system_dir ? s->system_dir : ".",
-         s->fullscreen ? 1 : 0, s->muted ? 1 : 0, MAX_STATE_SLOT, s->state_slot) < 0)
+         s->fullscreen ? 1 : 0, s->muted ? 1 : 0, MAX_STATE_SLOT, s->state_slot, keys_text) < 0)
       return false;
 
    ok = config_write(SETTINGS_FILE, text);

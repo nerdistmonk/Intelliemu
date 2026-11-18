@@ -10,6 +10,7 @@
 #include "intelliemu.h"
 #include "menu.h"
 #include "recent.h"
+#include "remap.h"
 
 #ifndef DEFAULT_CORE
 #ifdef _WIN32
@@ -362,6 +363,9 @@ static void render(void)
       draw_centered(mid + 4, "File > Open ROM... (Ctrl+O)");
    }
 
+   if (remap_is_open())
+      remap_render(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT));
+
    fill_menu_state(&state);
    menu_render(renderer, &state);
    SDL_RenderPresent(renderer);
@@ -498,6 +502,12 @@ static void toggle_mute(void)
    settings_save(&settings);
 }
 
+static void apply_key_map(void)
+{
+   input_set_key_map(settings.keys);
+   settings_save(&settings);
+}
+
 static void cycle_state_slot(void)
 {
    settings.state_slot = settings.state_slot % MAX_STATE_SLOT + 1;
@@ -550,6 +560,14 @@ static void handle_menu_action(const struct menu_action *action)
          break;
       case MENU_TOGGLE_MUTE:
          toggle_mute();
+         break;
+      case MENU_REMAP_KEYS:
+         menu_close();
+         remap_open(settings.keys);
+         break;
+      case MENU_RESET_KEYS:
+         controls_reset(settings.keys);
+         apply_key_map();
          break;
       default:
          break;
@@ -613,6 +631,9 @@ static void handle_pointer(float window_x, float window_y, bool click)
    struct menu_action action = { MENU_NONE, 0 };
    float x, y;
 
+   if (remap_is_open())
+      return;
+
    if (!SDL_RenderCoordinatesFromWindow(renderer, window_x, window_y, &x, &y))
       return;
 
@@ -645,6 +666,11 @@ static void handle_event(const SDL_Event *event)
 {
    if (event->type == SDL_EVENT_QUIT)
       quit_requested = true;
+   else if (event->type == SDL_EVENT_KEY_DOWN && remap_is_open())
+   {
+      if (remap_handle_key(&event->key))
+         apply_key_map();
+   }
    else if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat)
       handle_key(&event->key);
    else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT)
@@ -659,7 +685,7 @@ static void handle_event(const SDL_Event *event)
 
 static void update_input_block(void)
 {
-   input_set_blocked(menu_is_open() || paused || !game_running());
+   input_set_blocked(menu_is_open() || remap_is_open() || paused || !game_running());
 }
 
 static void main_loop(long max_frames)
@@ -710,6 +736,7 @@ static int run(const struct options *opt)
    }
 
    input_init();
+   input_set_key_map(settings.keys);
    open_rom_event = SDL_RegisterEvents(1);
    if (!open_rom_event)
    {
@@ -780,13 +807,14 @@ static void usage(const char *prog)
          "\n"
          "settings: $XDG_CONFIG_HOME/Intelliemu/config.ini (default ~/.config/Intelliemu/config.ini)\n"
          "          -s and -x apply to this run only\n"
-         "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause),\n"
+         "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause, remap keys),\n"
          "      State (save, load, slot), Video (fullscreen), Audio (mute)\n"
          "hotkeys: Ctrl+O open ROM, Ctrl+W close ROM, Ctrl+Q quit,\n"
          "         F1 save state, F5 load state, F9 next slot, F10 reset,\n"
          "         F11 fullscreen, Esc close menu or quit\n"
          "keyboard (player 1): arrows = D-pad, Z/X/C/V = A/B/Y/X, Q/E = L/R,\n"
-         "         Return = start, Backspace = select, 0-9 / [ / ] = keypad\n",
+         "         Return = start, Backspace = select, 0-9 / [ / ] = keypad\n"
+         "         rebind keys from Emulation > Remap keys...\n",
          prog, DEFAULT_CORE, MAX_SCALE);
 }
 

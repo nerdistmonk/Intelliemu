@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "controls.h"
+
 #define DEFAULT_SCALE 3
 #define MAX_SCALE 16
 #define MAX_STATE_SLOT 9
@@ -16,6 +18,7 @@ struct settings
    bool fullscreen;
    bool muted;
    int state_slot;
+   SDL_Scancode keys[CONTROL_COUNT];
 };
 
 /* Fills s with defaults, then with values from config.ini. Creates the file if it does not exist. */

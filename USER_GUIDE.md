@@ -49,7 +49,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | Menu | Items |
 | --- | --- |
 | File | Open ROM..., Close ROM, recent ROMs, Exit |
-| Emulation | Reset, Pause / Resume |
+| Emulation | Reset, Pause / Resume, Remap keys..., Restore default keys |
 | State | Save slot N, Load slot N, Next slot |
 | Video | Fullscreen |
 | Audio | Mute |
@@ -65,7 +65,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | F9 | Next state slot (1-9) |
 | F10 | Reset |
 | F11 | Toggle fullscreen |
-| Esc | Close the menu, or quit when no menu is open |
+| Esc | Close the menu or remap screen, or quit when neither is open |
 
 ## Controls
 
@@ -79,6 +79,18 @@ Keyboard, player 1:
 | Return | Console pause (Start) |
 | Backspace | Swap left and right controllers (Select) |
 | 0-9, `[`, `]` | Keypad |
+
+Keyboard bindings can be changed in **Emulation > Remap keys...**:
+
+- Arrow keys move the selection between controls, and Return starts a rebind. Press the new key to finish.
+- Delete leaves the selected control unbound. An unbound control does nothing.
+- If the new key is already used by another control, the two bindings swap.
+- Escape cancels a rebind, or closes the remap screen when no rebind is in progress.
+- While the remap screen is open, the game receives no input.
+- Escape, F1, F5, F9, F10, F11, and Ctrl+O/W/Q are reserved for the emulator and cannot be bound.
+- Numpad 0-9 and Numpad Enter act as their keypad control while that control has a key bound.
+
+**Emulation > Restore default keys** resets every keyboard binding.
 
 Gamepad (SDL mapping, tested with an SNES controller):
 
@@ -109,6 +121,7 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | `fullscreen` | `1` or `0` | Changed with F11 or the Video menu, saved immediately, and restored at startup. |
 | `muted` | `1` or `0` | Changed with the Audio menu. Saved immediately. |
 | `state_slot` | 1-9 | Changed with F9 or the State menu. Saved immediately. |
+| `key_<control>` | SDL key name, such as `Up`, `W`, or `Keypad 1` | One line per keyboard control, for example `key_disc_up`. An empty value leaves the control unbound. Unknown names and reserved keys keep the current binding. If two controls share a key on load, the later one is unbound. Written by Remap keys... |
 
 - `recent.txt` lists recent ROM paths, newest first.
 
@@ -117,6 +130,7 @@ The emulator rewrites `config.ini` whenever it saves a setting, so hand-added ke
 ## Known Limitations
 
 - **Keypad overlays are not available.** The core's overlay needs its core option and mouse or touch input. The standalone emulator does not yet provide core options or mouse input.
+- **Gamepad buttons cannot be remapped yet.** Only keyboard bindings are configurable.
 - **ECS is not supported.**
 - **Melody Blaster and Scooby Doo** report bad opcodes and do not run yet.
 - **Analog sticks, triggers, and keypad input from the analog stick** are not mapped in the standalone emulator.

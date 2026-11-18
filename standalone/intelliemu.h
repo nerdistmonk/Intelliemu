@@ -7,6 +7,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "controls.h"
 #include "libretro.h"
 
 struct bios_files;
@@ -50,6 +51,7 @@ void input_handle_event(const SDL_Event *event);
 void input_release_all(void);
 void input_after_run(void);
 void input_set_blocked(bool blocked);
+void input_set_key_map(const SDL_Scancode keys[CONTROL_COUNT]);
 
 /* Implemented by main.c and input.c; called by the core. */
 void frontend_video_refresh(const void *data, unsigned width, unsigned height, size_t pitch);

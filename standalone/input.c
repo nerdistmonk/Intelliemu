@@ -7,12 +7,6 @@
 #define KEYPAD_MAX 32
 #define TRIGGER_THRESHOLD 8000
 
-struct key_binding
-{
-   SDL_Scancode key;
-   unsigned id;
-};
-
 struct pad_binding
 {
    SDL_GamepadButton button;
@@ -25,20 +19,24 @@ struct held_key
    uint32_t character;
 };
 
-static const struct key_binding key_bindings[] = {
-   { SDL_SCANCODE_UP,        RETRO_DEVICE_ID_JOYPAD_UP },
-   { SDL_SCANCODE_DOWN,      RETRO_DEVICE_ID_JOYPAD_DOWN },
-   { SDL_SCANCODE_LEFT,      RETRO_DEVICE_ID_JOYPAD_LEFT },
-   { SDL_SCANCODE_RIGHT,     RETRO_DEVICE_ID_JOYPAD_RIGHT },
-   { SDL_SCANCODE_Z,         RETRO_DEVICE_ID_JOYPAD_A },
-   { SDL_SCANCODE_X,         RETRO_DEVICE_ID_JOYPAD_B },
-   { SDL_SCANCODE_C,         RETRO_DEVICE_ID_JOYPAD_Y },
-   { SDL_SCANCODE_V,         RETRO_DEVICE_ID_JOYPAD_X },
-   { SDL_SCANCODE_RETURN,    RETRO_DEVICE_ID_JOYPAD_START },
-   { SDL_SCANCODE_BACKSPACE, RETRO_DEVICE_ID_JOYPAD_SELECT },
-   { SDL_SCANCODE_Q,         RETRO_DEVICE_ID_JOYPAD_L },
-   { SDL_SCANCODE_E,         RETRO_DEVICE_ID_JOYPAD_R },
+/* Indexed by control. The first CONTROL_JOYPAD_COUNT controls are joypad buttons, in controls.h order. */
+static const unsigned joypad_ids[CONTROL_JOYPAD_COUNT] = {
+   RETRO_DEVICE_ID_JOYPAD_UP,
+   RETRO_DEVICE_ID_JOYPAD_DOWN,
+   RETRO_DEVICE_ID_JOYPAD_LEFT,
+   RETRO_DEVICE_ID_JOYPAD_RIGHT,
+   RETRO_DEVICE_ID_JOYPAD_A,
+   RETRO_DEVICE_ID_JOYPAD_B,
+   RETRO_DEVICE_ID_JOYPAD_Y,
+   RETRO_DEVICE_ID_JOYPAD_X,
+   RETRO_DEVICE_ID_JOYPAD_START,
+   RETRO_DEVICE_ID_JOYPAD_SELECT,
+   RETRO_DEVICE_ID_JOYPAD_L,
+   RETRO_DEVICE_ID_JOYPAD_R,
 };
+
+/* Copied from the config by input_set_key_map(). Unbound controls are SDL_SCANCODE_UNKNOWN. */
+static SDL_Scancode key_for[CONTROL_COUNT];
 
 static const struct pad_binding pad_bindings[] = {
    { SDL_GAMEPAD_BUTTON_DPAD_UP,        RETRO_DEVICE_ID_JOYPAD_UP },
@@ -81,25 +79,54 @@ static uint16_t latched[PORT_COUNT];
 /* While blocked (menu open, paused, or no game), the core sees no input. Releases still count. */
 static bool blocked;
 
-static uint32_t keypad_character(SDL_Scancode sc)
+/* Returns the core keypad character for a control, or 0 if the control is not a keypad button. */
+static uint32_t keypad_character(int control)
 {
-   if (sc >= SDL_SCANCODE_1 && sc <= SDL_SCANCODE_9)
-      return '1' + (sc - SDL_SCANCODE_1);
-   if (sc >= SDL_SCANCODE_KP_1 && sc <= SDL_SCANCODE_KP_9)
-      return '1' + (sc - SDL_SCANCODE_KP_1);
-   if (sc == SDL_SCANCODE_0 || sc == SDL_SCANCODE_KP_0)
-      return '0';
+   if (control >= CONTROL_KEYPAD_1 && control <= CONTROL_KEYPAD_9)
+      return '1' + (control - CONTROL_KEYPAD_1);
 
-   switch (sc)
+   switch (control)
    {
-      case SDL_SCANCODE_LEFTBRACKET:
+      case CONTROL_KEYPAD_0:
+         return '0';
+      case CONTROL_KEYPAD_CLEAR:
          return '[';
-      case SDL_SCANCODE_RIGHTBRACKET:
-      case SDL_SCANCODE_KP_ENTER:
+      case CONTROL_KEYPAD_ENTER:
          return ']';
       default:
          return 0;
    }
+}
+
+/* Numpad keys work as extra keys for their keypad button, but only while that button is bound. */
+static int numpad_alias(SDL_Scancode sc)
+{
+   if (sc >= SDL_SCANCODE_KP_1 && sc <= SDL_SCANCODE_KP_9)
+      return CONTROL_KEYPAD_1 + (sc - SDL_SCANCODE_KP_1);
+   if (sc == SDL_SCANCODE_KP_0)
+      return CONTROL_KEYPAD_0;
+   if (sc == SDL_SCANCODE_KP_ENTER)
+      return CONTROL_KEYPAD_ENTER;
+   return -1;
+}
+
+/* An explicit binding wins over a numpad alias. Returns -1 if the key does nothing. */
+static int control_for_key(SDL_Scancode sc)
+{
+   int control;
+
+   if (sc == SDL_SCANCODE_UNKNOWN)
+      return -1;
+
+   for (control = 0; control < CONTROL_COUNT; control++)
+      if (key_for[control] == sc)
+         return control;
+
+   control = numpad_alias(sc);
+   if (control >= 0 && key_for[control] != SDL_SCANCODE_UNKNOWN)
+      return control;
+
+   return -1;
 }
 
 static void keypad_send(bool down, uint32_t character)
@@ -159,13 +186,10 @@ static void keypad_release(SDL_Scancode sc)
       keypad_sync();
 }
 
-static void latch_key(SDL_Scancode sc)
+static void latch_control(int control)
 {
-   size_t i;
-
-   for (i = 0; i < SDL_arraysize(key_bindings); i++)
-      if (key_bindings[i].key == sc)
-         latched[0] |= (uint16_t)(1u << key_bindings[i].id);
+   if (control >= 0 && control < CONTROL_JOYPAD_COUNT)
+      latched[0] |= (uint16_t)(1u << joypad_ids[control]);
 }
 
 static void latch_pad_button(SDL_JoystickID id, SDL_GamepadButton button)
@@ -229,6 +253,11 @@ static void load_gamepad_mappings(void)
       fprintf(stderr, "gamepad mappings not loaded from %s: %s\n", path, SDL_GetError());
 
    SDL_free(path);
+}
+
+void input_set_key_map(const SDL_Scancode keys[CONTROL_COUNT])
+{
+   memcpy(key_for, keys, sizeof(key_for));
 }
 
 void input_init(void)
@@ -296,11 +325,12 @@ void input_handle_event(const SDL_Event *event)
       case SDL_EVENT_KEY_DOWN:
          if (!event->key.repeat && !blocked)
          {
-            uint32_t character = keypad_character(event->key.scancode);
+            int control = control_for_key(event->key.scancode);
+            uint32_t character = control >= 0 ? keypad_character(control) : 0;
 
             if (character)
                keypad_press(event->key.scancode, character);
-            latch_key(event->key.scancode);
+            latch_control(control);
          }
          break;
 
@@ -345,9 +375,9 @@ void frontend_input_poll(void)
    }
 
    keys = SDL_GetKeyboardState(NULL);
-   for (i = 0; i < SDL_arraysize(key_bindings); i++)
-      if (keys[key_bindings[i].key])
-         keyboard_bits |= (uint16_t)(1u << key_bindings[i].id);
+   for (i = 0; i < CONTROL_JOYPAD_COUNT; i++)
+      if (key_for[i] != SDL_SCANCODE_UNKNOWN && keys[key_for[i]])
+         keyboard_bits |= (uint16_t)(1u << joypad_ids[i]);
 
    for (port = 0; port < PORT_COUNT; port++)
    {

@@ -23,6 +23,8 @@ enum menu_command
    MENU_NEXT_SLOT,
    MENU_TOGGLE_FULLSCREEN,
    MENU_TOGGLE_MUTE,
+   MENU_REMAP_KEYS,
+   MENU_RESET_KEYS,
 };
 
 struct menu_state
