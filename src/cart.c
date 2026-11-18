@@ -497,6 +497,15 @@ int cartUsesECS(void)
 	return 0;
 }
 
+// Grail ROMs freeze when a keypad digit is held down; libretro.c sends their digits as one-frame pulses
+int isGrailRom(void)
+{
+	int fingerprint = cartFingerprint();
+	return (size==14913 && fingerprint==10865)   // grail.int
+		|| (size==16449 && fingerprint==10816)   // grail2.int
+		|| (size==28745 && fingerprint==10913);  // grail_plus.int
+}
+
 int getLoadMethod() // lazy, but it works
 {
 	int i;
