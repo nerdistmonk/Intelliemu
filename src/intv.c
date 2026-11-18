@@ -26,6 +26,7 @@
 #include "cart.h"
 #include "osd.h"
 #include "ivoice.h"
+#include "ecs.h"
 
 #ifdef __LIBRETRO__
 #include <streams/file_stream.h>
@@ -40,10 +41,12 @@ void LoadGame(const char* path) // load cart rom //
 {
 	if(LoadCart(path))
 	{
+		ecs_attach(cartUsesECS());
 		OSD_drawText(3, 3, "LOAD CART: OKAY");
 	}
 	else
 	{
+		ecs_attach(0);
 		OSD_drawText(3, 3, "LOAD CART: FAIL");
 	}
 }
@@ -150,6 +153,7 @@ void Reset()
 	CP1610Reset();
 	STICReset();
     ivoice_reset();
+    ecs_reset();
 }
 
 void Init()

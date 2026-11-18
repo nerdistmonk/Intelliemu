@@ -10,6 +10,7 @@
 /* Matched against the normalized name: see name_key. */
 static const char *const exec_names[] = { "exec", "executive", "execrom", "executiverom", "erom", NULL };
 static const char *const grom_names[] = { "grom", "graphics", "graphicsrom", NULL };
+static const char *const ecs_names[] = { "ecs", NULL };
 
 /* Lowercases the name, drops non-alphanumerics, the .bin/.rom extension, and an "intv" prefix. */
 static bool name_key(const char *filename, char *key, size_t key_size)
@@ -125,11 +126,14 @@ void bios_find(const char *system_dir, struct bios_files *files)
 
    files->exec_path = find_image(dirs, count, exec_names, BIOS_EXEC_SIZE);
    files->grom_path = find_image(dirs, count, grom_names, BIOS_GROM_SIZE);
+   files->ecs_path = find_image(dirs, count, ecs_names, BIOS_ECS_SIZE);
 
    if (!files->exec_path)
       report_missing("Executive ROM", "exec.bin or INTV_EROM.bin", BIOS_EXEC_SIZE, dirs, count);
    if (!files->grom_path)
       report_missing("Graphics ROM", "grom.bin or INTV_GROM.bin", BIOS_GROM_SIZE, dirs, count);
+   if (!files->ecs_path)
+      fprintf(stderr, "note: ECS.bin (%d bytes) not found; ECS cartridges will not run correctly without it\n", BIOS_ECS_SIZE);
 
    for (size_t i = 0; i < count; i++)
       SDL_free(dirs[i]);
@@ -140,6 +144,8 @@ void bios_free(struct bios_files *files)
 {
    SDL_free(files->exec_path);
    SDL_free(files->grom_path);
+   SDL_free(files->ecs_path);
    files->exec_path = NULL;
    files->grom_path = NULL;
+   files->ecs_path = NULL;
 }

@@ -54,7 +54,7 @@ cmake --build build
 
 ### Testing Workflow
 1. Build core for platform
-2. Load in RetroArch with appropriate BIOS files (`exec.bin`, `grom.bin`) in system folder
+2. Load in RetroArch with appropriate BIOS files (`exec.bin`, `grom.bin`, and optionally `ECS.bin` for ECS cartridges) in system folder
 3. Launch Intellivision ROM to test controller input and rendering
 4. On Android: touch keypad area to test pointer input handling
 

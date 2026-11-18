@@ -35,6 +35,7 @@
 #include "stic.h"
 #include "psg.h"
 #include "ivoice.h"
+#include "ecs.h"
 #include "controller.h"
 #include "osd.h"
 
@@ -1098,6 +1099,7 @@ void retro_init(void)
 {
 	char execPath[PATH_MAX_LENGTH];
 	char gromPath[PATH_MAX_LENGTH];
+	char ecsPath[PATH_MAX_LENGTH];
 	struct retro_keyboard_callback kb = { Keyboard };
 
 	// controller descriptors
@@ -1160,7 +1162,7 @@ void retro_init(void)
 	Environ(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &SystemPath);
 
 	// the standalone frontend resolves BIOS files itself; other frontends fall back to the system directory
-	struct intelliemu_bios_paths bios = { NULL, NULL };
+	struct intelliemu_bios_paths bios = { NULL, NULL, NULL };
 	Environ(INTELLIEMU_ENV_BIOS_PATHS, &bios);
 
 	// load exec
@@ -1178,6 +1180,14 @@ void retro_init(void)
 		bios.grom_path = gromPath;
 	}
 	loadGrom(bios.grom_path);
+
+	// load optional ECS rom
+	if (!bios.ecs_path)
+	{
+		fill_pathname_join(ecsPath, SystemPath, "ecs.bin", PATH_MAX_LENGTH);
+		bios.ecs_path = ecsPath;
+	}
+	ecs_load(bios.ecs_path);
 
 	// Setup keyboard input
 	Environ(RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK, &kb);
@@ -1479,7 +1489,7 @@ RETRO_API size_t retro_get_memory_size(unsigned id)
 	return 0;
 }
 
-#define SERIALIZED_VERSION 0x4f544702
+#define SERIALIZED_VERSION 0x4f544703
 
 struct serialized {
 	int version;
@@ -1487,6 +1497,7 @@ struct serialized {
 	struct STICserialized STIC;
 	struct PSGserialized PSG;
 	struct ivoiceSerialized ivoice;
+	struct ECSserialized ECS;
 	unsigned int Memory[0x10000];   // Should be equal to Memory.c
 	// Extra variables from intv.c
 	int SR1;
@@ -1508,6 +1519,7 @@ bool retro_serialize(void *data, size_t size)
 	STICSerialize(&all->STIC);
 	PSGSerialize(&all->PSG);
 	ivoiceSerialize(&all->ivoice);
+	ECSSerialize(&all->ECS);
 	memcpy(all->Memory, Memory, sizeof(Memory));
 	all->SR1 = SR1;
 	all->intv_halt = intv_halt;
@@ -1525,6 +1537,7 @@ bool retro_unserialize(const void *data, size_t size)
 	STICUnserialize(&all->STIC);
 	PSGUnserialize(&all->PSG);
 	ivoiceUnserialize(&all->ivoice);
+	ECSUnserialize(&all->ECS);
 	memcpy(Memory, all->Memory, sizeof(Memory));
 	SR1 = all->SR1;
 	intv_halt = all->intv_halt;

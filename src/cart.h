@@ -19,5 +19,6 @@
 */
 
 int LoadCart(const char *path);
+int cartUsesECS(void);
 
 #endif

@@ -22,6 +22,7 @@
 #include "stic.h"
 #include "psg.h"
 #include "ivoice.h"
+#include "ecs.h"
 
 unsigned int Memory[0x10000];
 
@@ -53,6 +54,9 @@ void writeMem(int adr, int val) // Write (should handle hooks/alias)
 {
     val &= 0xFFFF;
     adr &= 0xFFFF;
+
+    if (ecs_enabled && ecs_write(adr, val))
+        return;
     
     // Ignore writes to protected ROM spaces
     // Note: B17 Bomber manages to write on EXEC ROM (it will crash if unprotected)
@@ -145,6 +149,9 @@ int readMem(int adr) // Read (should handle hooks/alias)
         val = (Memory[adr] & stic_and[adr]) | stic_or[adr];
         return val;
 	}
+    if (ecs_enabled && ecs_read(adr, &val))
+        return val;
+
     val = Memory[adr];
 
 	if(adr>=0x100 && adr<=0x1FF)
@@ -185,4 +192,5 @@ void MemoryInit()
 	for(i=0x6000; i<=0xFFFF; i++) { Memory[i] = 0xFFFF; }
 	Memory[0x1FE] = 0xFF; /* Controller R */
 	Memory[0x1FF] = 0xFF; /* Controller L */
+	ecs_attach(0);
 }

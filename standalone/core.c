@@ -25,6 +25,7 @@ static bool RETRO_CALLCONV environment_cb(unsigned cmd, void *data)
 
          paths->exec_path = g_core->bios ? g_core->bios->exec_path : NULL;
          paths->grom_path = g_core->bios ? g_core->bios->grom_path : NULL;
+         paths->ecs_path = g_core->bios ? g_core->bios->ecs_path : NULL;
          return true;
       }
 

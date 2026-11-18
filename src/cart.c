@@ -465,15 +465,42 @@ int fingerprints[] =
 11566, 0  // Zaxxon (1982) (Coleco)
 };
 
-int getLoadMethod() // lazy, but it works
+static int cartFingerprint(void)
 {
 	int i;
 	int fingerprint = 0;
-	// find fingerprint
 	for(i=0; i<256; i++)
 	{
 		fingerprint = fingerprint + data[i];
 	}
+	return fingerprint;
+}
+
+// Carts that expect the ECS, using the fingerprints from the database above
+static const int ecsFingerprints[] = {
+	10242, // Melody Blaster (1983) (Mattel)
+	10420, // Scooby Doo's Maze Chase (1983) (Mattel)
+	10643, // Mind Strike! (1982) (Mattel)
+	11042, // Jetsons, The - Ways With Words (1983) (Mattel)
+	12646, // Number Jumble (1983) (Mattel)
+	15043  // World Series Major League Baseball (1983) (Mattel)
+};
+
+int cartUsesECS(void)
+{
+	int i;
+	int fingerprint = cartFingerprint();
+	for(i=0; i<(int)(sizeof(ecsFingerprints)/sizeof(ecsFingerprints[0])); i++)
+	{
+		if(fingerprint==ecsFingerprints[i]) return 1;
+	}
+	return 0;
+}
+
+int getLoadMethod() // lazy, but it works
+{
+	int i;
+	int fingerprint = cartFingerprint();
 	printf("[INFO] [FREEINTV] Cartridge fingerprint code: %i\n", fingerprint);
 	
 	// find load method

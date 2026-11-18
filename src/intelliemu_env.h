@@ -13,6 +13,7 @@ struct intelliemu_bios_paths
 {
    const char *exec_path;
    const char *grom_path;
+   const char *ecs_path;
 };
 
 #endif

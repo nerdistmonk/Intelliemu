@@ -14,6 +14,7 @@ add_library(freeintv_libretro SHARED
     src/libretro.c
     src/intv.c
     src/memory.c
+    src/ecs.c
     src/cp1610.c
     src/cart.c
     src/controller.c

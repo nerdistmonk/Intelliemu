@@ -34,6 +34,8 @@ The emulator searches these folders, in order, for each BIOS image (`-s` only ad
 
 Accepted filenames are the same as in the [README](README.md#bios). Names match regardless of case, punctuation, a leading `INTV`, and a `.bin` or `.rom` extension, so `INTV_EROM.bin` and `intv-erom.BIN` both work. A file must be exactly 8192 bytes (executive) or 2048 bytes (graphics); other sizes are skipped with a message. If an image is missing, the emulator prints the folders it searched.
 
+`ECS.bin` is optional and must be exactly 24576 bytes. Put it in the same folders. Only the ECS cartridges need it; the emulator prints a note at startup when it is absent, and a warning when an ECS cartridge is loaded without it.
+
 ```
 ~/.config/Intelliemu/bios/
 ├── INTV_EROM.bin

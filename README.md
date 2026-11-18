@@ -50,7 +50,7 @@ See [USER_GUIDE.md](USER_GUIDE.md) for running games, menus, controls, settings,
 The FreeIntv core is licensed under GPLv2+.
 
 ## BIOS
-Intelliemu needs two Intellivision BIOS images. It searches these folders in order, and uses the first matching file for each image:
+Intelliemu needs two Intellivision BIOS images, and accepts an optional third for the Entertainment Computer System. It searches these folders in order, and uses the first matching file for each image:
 
 1. `~/.config/Intelliemu/bios/` (or `$XDG_CONFIG_HOME/Intelliemu/bios/`)
 2. `bios/` beside `release/intelliemu`
@@ -60,8 +60,9 @@ Intelliemu needs two Intellivision BIOS images. It searches these folders in ord
 | --- | --- | --- | --- |
 | Executive ROM | `exec.bin`, `executive.bin`, `execrom.bin`, `erom.bin`, `INTV_EROM.bin` | 8192 bytes | `62e761035cb657903761800f4437b8af` |
 | Graphics ROM | `grom.bin`, `graphics.bin`, `graphicsrom.bin`, `INTV_GROM.bin` | 2048 bytes | `0cd5946c6473e42e8e4c2137785e427f` |
+| ECS ROM (optional) | `ecs.bin`, `ECS.bin` | 24576 bytes | `2e72a9a2b897d330a35c8b07a6146c52` |
 
 * Names match regardless of case, punctuation, a leading `INTV`, and a `.bin` or `.rom` extension. Files of the wrong size are skipped. Zip archives are not read, so extract the `.bin` files first.
 
 ## Entertainment Computer System
-FreeIntv does not currently support Entertainment Computer System (ECS) functionality. Contributions to the code are welcome!
+The ECS ROM is only used by the cartridges that need it: World Series Major League Baseball, Mind Strike, Melody Blaster, The Jetsons' Ways With Words, Number Jumble, and Scooby-Doo's Maze Chase. Without `ECS.bin`, those cartridges will not run correctly. The ECS keyboard and second sound chip are not emulated yet, so games that depend on them may not be fully playable.
