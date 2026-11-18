@@ -14,12 +14,14 @@
 #include "remap.h"
 #include "xbrz.h"
 
-#ifndef DEFAULT_CORE
 #ifdef _WIN32
-#define DEFAULT_CORE "./freeintv_libretro.dll"
+#define CORE_FILE_NAME "freeintv_libretro.dll"
 #else
-#define DEFAULT_CORE "./freeintv_libretro.so"
+#define CORE_FILE_NAME "freeintv_libretro.so"
 #endif
+
+#ifndef DEFAULT_CORE
+#define DEFAULT_CORE "./" CORE_FILE_NAME
 #endif
 
 #define DEFAULT_WIDTH 352
@@ -1302,6 +1304,19 @@ static void usage(const char *prog)
 }
 
 
+/* The core beside the executable wins, so a moved or copied release folder still runs. */
+static char *find_core_beside_exe(void)
+{
+   const char *base = SDL_GetBasePath();
+   char *path = NULL;
+   SDL_PathInfo info;
+
+   if (base && SDL_asprintf(&path, "%s%s", base, CORE_FILE_NAME) >= 0 && SDL_GetPathInfo(path, &info))
+      return path;
+   SDL_free(path);
+   return NULL;
+}
+
 static bool parse_long(const char *text, long min, long max, long *value)
 {
    char *end = NULL;
@@ -1318,8 +1333,9 @@ int main(int argc, char *argv[])
 {
    settings_load(&settings);
 
+   char *beside_core = find_core_beside_exe();
    struct options opt = {
-      .core_path = DEFAULT_CORE,
+      .core_path = beside_core ? beside_core : DEFAULT_CORE,
       .system_dir = settings.system_dir,
       .rom = NULL,
       .scale = settings.scale,
@@ -1387,5 +1403,6 @@ int main(int argc, char *argv[])
    status = run(&opt);
    bios_free(&bios);
    settings_free(&settings);
+   SDL_free(beside_core);
    return status;
 }
