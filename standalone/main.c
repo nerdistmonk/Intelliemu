@@ -39,6 +39,8 @@ struct options
    const char *rom;
    long scale;
    long max_frames;
+   bool fullscreen;
+   int xbrz;
 };
 
 static core_t core;
@@ -47,6 +49,7 @@ static const char *system_dir;
 static struct bios_files bios;
 static char *rom_file;
 static long window_scale;
+static int xbrz_override = -1;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *texture;
@@ -60,6 +63,12 @@ static uint64_t next_frame_ns;
 static bool quit_requested;
 static bool paused;
 static struct settings settings;
+
+/* The --xbrz/--no-xbrz flag overrides the saved setting for this run only. */
+static bool xbrz_on(void)
+{
+   return xbrz_override >= 0 ? xbrz_override : settings.xbrz;
+}
 static bool dialog_pending;
 static Uint32 open_rom_event;
 static char status[64];
@@ -120,7 +129,7 @@ static bool reserve(void **buf, size_t *size, size_t need)
 /* Uploads a packed XRGB frame. With xBRZ on, the texture is twice as large in each direction. */
 static void present_frame(const void *frame, unsigned width, unsigned height)
 {
-   unsigned scale = settings.xbrz ? XBRZ_SCALE : 1;
+   unsigned scale = xbrz_on() ? XBRZ_SCALE : 1;
    unsigned tex_w = width * scale;
    unsigned tex_h = height * scale;
 
@@ -144,7 +153,7 @@ static void present_frame(const void *frame, unsigned width, unsigned height)
       texture_h = tex_h;
    }
 
-   if (settings.xbrz)
+   if (xbrz_on())
    {
       if (!reserve(&xbrz_frame, &xbrz_frame_size, (size_t)tex_w * tex_h * 4))
          return;
@@ -411,7 +420,7 @@ static void fill_menu_state(struct menu_state *state)
    state->fullscreen = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
    state->muted = settings.muted;
    state->aspect_4_3 = settings.aspect_4_3;
-   state->xbrz = settings.xbrz;
+   state->xbrz = xbrz_on();
    state->state_slot = settings.state_slot;
    state->canvas_width = (int)pic_w;
    state->recent = &recent;
@@ -605,7 +614,8 @@ static void toggle_aspect(void)
 
 static void toggle_xbrz(void)
 {
-   settings.xbrz = !settings.xbrz;
+   settings.xbrz = !xbrz_on();
+   xbrz_override = -1;
    if (texture && last_frame && game_running())
       present_frame(last_frame, last_w, last_h);
    settings_save(&settings);
@@ -961,6 +971,7 @@ static int run(const struct options *opt)
    core_path = opt->core_path;
    system_dir = opt->system_dir;
    window_scale = opt->scale;
+   xbrz_override = opt->xbrz;
 
    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
    {
@@ -1001,7 +1012,7 @@ static int run(const struct options *opt)
       goto cleanup;
    }
 
-   if (settings.fullscreen)
+   if (settings.fullscreen || opt->fullscreen)
       SDL_SetWindowFullscreen(window, true);
 
    SDL_SetRenderVSync(renderer, 1);
@@ -1037,12 +1048,15 @@ static void usage(const char *prog)
          "usage: %s [options] [GAME]\n"
          "  -c, --core PATH    libretro core library (default: %s)\n"
          "  -s, --system DIR   extra folder searched for BIOS files (default: from config.ini)\n"
-         "  -x, --scale N      initial window scale, 1-%d (default: from config.ini)\n"
-         "  -f, --frames N     exit after N frames (requires GAME; for testing)\n"
+         "  -w, --scale N      initial window scale, 1-%d (default: from config.ini)\n"
+         "  -f, --fullscreen   start in fullscreen\n"
+         "  -x, --xbrz         start with the xBRZ filter on\n"
+         "      --no-xbrz      start with the xBRZ filter off\n"
+         "  -d, --frames N     exit after N frames (requires GAME; for testing)\n"
          "  -h, --help         show this help\n"
          "\n"
          "settings: $XDG_CONFIG_HOME/Intelliemu/config.ini (default ~/.config/Intelliemu/config.ini)\n"
-         "          -s and -x apply to this run only\n"
+         "          -s, -w, -f, -x, and --no-xbrz apply to this run only\n"
          "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause, remap, swap gamepads, restore bindings),\n"
          "      State (save, load, slot), Video (fullscreen, 4:3 aspect, xBRZ filter, screenshot), Audio (mute)\n"
          "hotkeys: Ctrl+O open ROM, Ctrl+W close ROM, Ctrl+Q quit,\n"
@@ -1076,6 +1090,8 @@ int main(int argc, char *argv[])
       .rom = NULL,
       .scale = settings.scale,
       .max_frames = -1,
+      .fullscreen = false,
+      .xbrz = -1,
    };
    int i;
    int status;
@@ -1094,7 +1110,7 @@ int main(int argc, char *argv[])
          opt.core_path = argv[++i];
       else if ((!strcmp(arg, "-s") || !strcmp(arg, "--system")) && has_value)
          opt.system_dir = argv[++i];
-      else if ((!strcmp(arg, "-x") || !strcmp(arg, "--scale")) && has_value)
+      else if ((!strcmp(arg, "-w") || !strcmp(arg, "--scale")) && has_value)
       {
          if (!parse_long(argv[++i], 1, MAX_SCALE, &opt.scale))
          {
@@ -1102,7 +1118,13 @@ int main(int argc, char *argv[])
             return 2;
          }
       }
-      else if ((!strcmp(arg, "-f") || !strcmp(arg, "--frames")) && has_value)
+      else if (!strcmp(arg, "-f") || !strcmp(arg, "--fullscreen"))
+         opt.fullscreen = true;
+      else if (!strcmp(arg, "-x") || !strcmp(arg, "--xbrz"))
+         opt.xbrz = 1;
+      else if (!strcmp(arg, "--no-xbrz"))
+         opt.xbrz = 0;
+      else if ((!strcmp(arg, "-d") || !strcmp(arg, "--frames")) && has_value)
       {
          if (!parse_long(argv[++i], 1, LONG_MAX, &opt.max_frames))
          {
