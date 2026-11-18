@@ -130,6 +130,7 @@ static void settings_defaults(struct settings *s)
    s->system_dir = SDL_strdup(".");
    s->fullscreen = false;
    s->muted = false;
+   s->p1_left = false;
    s->state_slot = 1;
    controls_reset(s->bindings);
 }
@@ -236,6 +237,8 @@ static void apply_setting(struct settings *s, const char *key, const char *value
       apply_flag(&s->fullscreen, value);
    else if (!strcmp(key, "muted"))
       apply_flag(&s->muted, value);
+   else if (!strcmp(key, "p1_left"))
+      apply_flag(&s->p1_left, value);
    else if (!strcmp(key, "system_dir") && *value)
    {
       char *copy = SDL_strdup(value);
@@ -336,13 +339,15 @@ bool settings_save(const struct settings *s)
          "# fullscreen and muted: 1 or 0; also changed from the menu and hotkeys\n"
          "fullscreen = %d\n"
          "muted = %d\n"
+         "# p1_left: 1 = P1 uses the Left controller, 0 = Right; also changed from the Emulation menu\n"
+         "p1_left = %d\n"
          "# state_slot: save state slot, 1-%d; also changed with F9 or the State menu\n"
          "state_slot = %d\n"
          "# p1_key_* and p2_key_*: keyboard key for each control (SDL key names, e.g. Z or Keypad 5); empty means unbound\n"
          "# p1_pad_* and p2_pad_*: gamepad input for each control (SDL names, e.g. a or lefttrigger); empty means unbound\n"
          "%s",
          MAX_SCALE, s->scale, s->system_dir ? s->system_dir : ".",
-         s->fullscreen ? 1 : 0, s->muted ? 1 : 0, MAX_STATE_SLOT, s->state_slot, bindings_text) < 0)
+         s->fullscreen ? 1 : 0, s->muted ? 1 : 0, s->p1_left ? 1 : 0, MAX_STATE_SLOT, s->state_slot, bindings_text) < 0)
       return false;
 
    ok = config_write(SETTINGS_FILE, text);

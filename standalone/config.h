@@ -17,6 +17,7 @@ struct settings
    char *system_dir;
    bool fullscreen;
    bool muted;
+   bool p1_left;
    int state_slot;
    struct control_map bindings[PLAYER_COUNT];
 };

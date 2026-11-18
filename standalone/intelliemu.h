@@ -38,12 +38,16 @@ typedef struct core
    bool (RETRO_CALLCONV *serialize)(void *data, size_t size);
    bool (RETRO_CALLCONV *unserialize)(const void *data, size_t size);
    void (RETRO_CALLCONV *keypad_event)(unsigned port, bool down, uint32_t character);
+   void (RETRO_CALLCONV *set_p1_left)(bool p1_left);
+   bool (RETRO_CALLCONV *get_p1_left)(void);
 } core_t;
 
 bool core_open(core_t *core, const char *library, const char *system_dir, const struct bios_files *bios);
 bool core_load_game(core_t *core, const char *rom_path);
 void core_close(core_t *core);
 void core_keypad_event(unsigned port, bool down, uint32_t character);
+void core_set_p1_left(bool p1_left);
+bool core_get_p1_left(void);
 
 void input_init(void);
 void input_shutdown(void);

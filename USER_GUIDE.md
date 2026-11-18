@@ -49,7 +49,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | Menu | Items |
 | --- | --- |
 | File | Open ROM..., Close ROM, recent ROMs, Exit |
-| Emulation | Reset, Pause / Resume, Remap P1 keyboard..., Remap P2 keyboard..., Remap P1 gamepad..., Remap P2 gamepad..., Restore default bindings |
+| Emulation | Reset, Pause / Resume, Remap P1 keyboard..., Remap P2 keyboard..., Remap P1 gamepad..., Remap P2 gamepad..., P1 uses Left or Right controller, Restore default bindings |
 | State | Save slot N, Load slot N, Next slot |
 | Video | Fullscreen |
 | Audio | Mute |
@@ -109,7 +109,9 @@ Each **Remap** entry in the Emulation menu edits one player's bindings for one d
 
 Gamepad bindings start empty. Bind any gamepad button or trigger to any control with **Remap P1 gamepad...** or **Remap P2 gamepad...**. Player 1 uses the first connected gamepad and player 2 the second, in connection order.
 
-When a gamepad connects, the window shows a notice for a few seconds naming its player and controller, such as `P1 gamepad: Xbox 360 Controller`. If both players already have a gamepad, the notice says the new one is not assigned. The bottom line of each remap screen lists the controller for P1 and P2, or `none`.
+When a gamepad connects, the window shows a notice for a few seconds naming its player and controller, such as `P1 gamepad: Xbox 360 Controller`. If both players already have a gamepad, the notice says the new one is not assigned. The bottom lines of each remap screen list the controller for P1 and P2, or `none`, and which controller slot P1 uses.
+
+**Emulation > P1 uses Left controller** (or **P1 uses Right controller**) chooses which Intellivision controller port player 1 reads. The default is Right, which matches earlier behavior. Choose Left for games that read player 1 from the left port, such as Advanced Dungeons & Dragons. Player 2 uses the other port. The choice is saved and applied each time a ROM loads. Pressing SELECT on either controller during a game swaps the slot for that session only, and the swap is not saved.
 
 Controller layouts come from `gamecontrollerdb.txt`, which sits beside the `intelliemu` executable. If the file is missing, the emulator prints a warning and uses only SDL's built-in mappings.
 
@@ -131,6 +133,7 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | `system_dir` | folder path | Extra folder searched for BIOS files |
 | `fullscreen` | `1` or `0` | Changed with F11 or the Video menu, saved immediately, and restored at startup. |
 | `muted` | `1` or `0` | Changed with the Audio menu. Saved immediately. |
+| `p1_left` | `1` (Left) or `0` (Right) | Changed with the Emulation menu item for P1's controller slot. Saved immediately. Applied on each ROM load. Default `0`. |
 | `state_slot` | 1-9 | Changed with F9 or the State menu. Saved immediately. |
 | `p1_key_<control>`, `p2_key_<control>` | SDL key name, such as `W`, `Up`, or `Keypad 1` | One line per keyboard control for each player, for example `p1_key_disc_up`. An empty value leaves the control unbound. Unknown names and reserved keys keep the current binding. If two controls of one player share a key on load, the later one is unbound. Written by the remap screens. Old `key_<control>` lines are ignored. |
 | `p1_pad_<control>`, `p2_pad_<control>` | SDL gamepad button name, such as `a`, `leftshoulder`, or `lefttrigger` | One line per gamepad control for each player, for example `p1_pad_top_action`. An empty value leaves the control unbound. Unknown names keep the current binding. Written by the remap screens. |

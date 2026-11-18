@@ -10,7 +10,7 @@
 #define GAP 8
 #define HEADER_Y 4
 #define ROW_TOP 18
-#define ROW_HEIGHT 13
+#define ROW_HEIGHT 12
 #define FOOTER_GAP 6
 #define LINE_HEIGHT 12
 #define TEXT_MAX 96
@@ -241,7 +241,7 @@ bool remap_handle_pad(int input)
    return bind_pad(selected(), input);
 }
 
-void remap_render(SDL_Renderer *renderer, int width, int height, const char *const pad_names[PLAYER_COUNT])
+void remap_render(SDL_Renderer *renderer, int width, int height, const char *const pad_names[PLAYER_COUNT], bool p1_left)
 {
    const int col_w = width / COLUMN_COUNT;
    const float top = (float)MENU_BAR_HEIGHT;
@@ -316,4 +316,7 @@ void remap_render(SDL_Renderer *renderer, int width, int height, const char *con
    SDL_snprintf(text, sizeof(text), "P1: %s   P2: %s", name_one, name_two);
    SDL_SetRenderDrawColor(renderer, 160, 220, 255, 255);
    SDL_RenderDebugText(renderer, PAD, footer + 3 * LINE_HEIGHT, text);
+
+   SDL_snprintf(text, sizeof(text), "P1 uses %s controller (Emulation menu)", p1_left ? "Left" : "Right");
+   SDL_RenderDebugText(renderer, PAD, footer + 4 * LINE_HEIGHT, text);
 }

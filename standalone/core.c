@@ -125,6 +125,8 @@ bool core_open(core_t *core, const char *library, const char *system_dir, const 
    LOAD_SYMBOL(serialize, "retro_serialize");
    LOAD_SYMBOL(unserialize, "retro_unserialize");
    LOAD_SYMBOL(keypad_event, "intelliemu_keypad_event");
+   LOAD_SYMBOL(set_p1_left, "intelliemu_set_p1_left");
+   LOAD_SYMBOL(get_p1_left, "intelliemu_get_p1_left");
 
    if (core->api_version() != RETRO_API_VERSION)
    {
@@ -200,4 +202,15 @@ void core_keypad_event(unsigned port, bool down, uint32_t character)
 {
    if (g_core && g_core->keypad_event)
       g_core->keypad_event(port, down, character);
+}
+
+void core_set_p1_left(bool p1_left)
+{
+   if (g_core && g_core->set_p1_left)
+      g_core->set_p1_left(p1_left);
+}
+
+bool core_get_p1_left(void)
+{
+   return g_core && g_core->get_p1_left && g_core->get_p1_left();
 }

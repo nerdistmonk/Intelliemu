@@ -833,6 +833,16 @@ static void write_port(int player, int state)
 	setControllerInput(player, state | keypadMask[player]);
 }
 
+void intelliemu_set_p1_left(bool p1_left)
+{
+	controllerSwap = p1_left ? 1 : 0;
+}
+
+bool intelliemu_get_p1_left(void)
+{
+	return controllerSwap != 0;
+}
+
 void intelliemu_keypad_event(unsigned port, bool down, uint32_t character)
 {
 	int code;

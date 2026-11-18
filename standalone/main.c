@@ -73,6 +73,12 @@ static bool game_running(void)
    return core.game_loaded;
 }
 
+/* The live value follows SELECT in the core; without a game, the saved setting applies. */
+static bool p1_uses_left(void)
+{
+   return game_running() ? core_get_p1_left() : settings.p1_left;
+}
+
 /* The menu bar is drawn above the picture, so the logical canvas is one bar taller. */
 static void update_presentation(void)
 {
@@ -241,6 +247,7 @@ static bool open_rom(const char *path)
       goto fail;
    }
 
+   core_set_p1_left(settings.p1_left);
    core.get_system_av_info(&av);
    frame_ns = (uint64_t)(1000000000.0 / av.timing.fps);
    next_frame_ns = SDL_GetTicksNS();
@@ -332,6 +339,7 @@ static void fill_menu_state(struct menu_state *state)
    state->paused = paused;
    state->fullscreen = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
    state->muted = settings.muted;
+   state->p1_left = p1_uses_left();
    state->state_slot = settings.state_slot;
    state->canvas_width = (int)pic_w;
    state->recent = &recent;
@@ -377,7 +385,7 @@ static void render(void)
       for (port = 0; port < PLAYER_COUNT; port++)
          pad_names[port] = input_pad_name(port);
 
-      remap_render(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT), pad_names);
+      remap_render(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT), pad_names, p1_uses_left());
    }
 
    fill_menu_state(&state);
@@ -516,6 +524,16 @@ static void toggle_mute(void)
    settings_save(&settings);
 }
 
+static void toggle_p1_slot(void)
+{
+   settings.p1_left = !p1_uses_left();
+   core_set_p1_left(settings.p1_left);
+   settings_save(&settings);
+
+   SDL_snprintf(notice, sizeof(notice), "P1 now uses the %s controller", settings.p1_left ? "Left" : "Right");
+   notice_until_ms = SDL_GetTicks() + NOTICE_MS;
+}
+
 static void apply_bindings(void)
 {
    input_set_bindings(settings.bindings);
@@ -590,6 +608,9 @@ static void handle_menu_action(const struct menu_action *action)
       case MENU_REMAP_P2_PAD:
          menu_close();
          remap_open(settings.bindings, 1, REMAP_GAMEPAD);
+         break;
+      case MENU_TOGGLE_P1_SLOT:
+         toggle_p1_slot();
          break;
       case MENU_RESET_KEYS:
          controls_reset(settings.bindings);

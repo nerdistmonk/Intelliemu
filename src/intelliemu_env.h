@@ -26,4 +26,11 @@ struct intelliemu_bios_paths
  */
 void intelliemu_keypad_event(unsigned port, bool down, uint32_t character);
 
+/*
+ * Which Intellivision controller slot player 1 uses: true = Left (0x1FF), false = Right (0x1FE).
+ * Call after retro_load_game, which resets it to the default.
+ */
+void intelliemu_set_p1_left(bool p1_left);
+bool intelliemu_get_p1_left(void);
+
 #endif
