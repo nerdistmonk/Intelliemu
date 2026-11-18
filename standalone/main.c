@@ -533,6 +533,15 @@ static void swap_gamepads(void)
       return;
    }
 
+   /* Gamepad bindings travel with their pad. Keyboard bindings stay with the port. */
+   for (int i = 0; i < CONTROL_COUNT; i++)
+   {
+      int pad = settings.bindings[0].pads[i];
+
+      settings.bindings[0].pads[i] = settings.bindings[1].pads[i];
+      settings.bindings[1].pads[i] = pad;
+   }
+   input_set_bindings(settings.bindings);
    input_get_gamepad_ids(settings.gamepad_id);
    settings_save(&settings);
 
