@@ -6,9 +6,9 @@ Version 1.0, 11-18-26
 
 ## Limitations
 
-Intelliemu supports only .int format (.rom can be renamed to .int and it will work fine)
-Intelliemu does not support bank switching roms (usually these roms are .bin/.cfg format, not all .bins are bank switching however, some can be renamed to .int and work)
-Intelliemu does not support any rom over 128kbytes in size due to loader limitations (I've only ever seen one homebrew game exceed this)
+- Intelliemu supports only .int format (.rom can be renamed to .int and it will work fine)
+- Intelliemu does not support bank switching roms (usually these roms are .bin/.cfg format, not all .bins are bank switching however, some can be renamed to .int and work)
+- Intelliemu does not support any rom over 128kbytes in size due to loader limitations (I've only ever seen one homebrew game exceed this)
 
 ## Authors & Contributors
 
