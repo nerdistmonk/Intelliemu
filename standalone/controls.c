@@ -230,6 +230,7 @@ bool controls_is_reserved(SDL_Scancode sc, SDL_Keymod mod)
       case SDL_SCANCODE_F9:
       case SDL_SCANCODE_F10:
       case SDL_SCANCODE_F11:
+      case SDL_SCANCODE_F12:
          return true;
       default:
          return false;

@@ -106,7 +106,7 @@ Each **Remap** entry in the Emulation menu edits one port's bindings for one dev
 - If the new key or gamepad input is already used by another control of that port, the two bindings swap.
 - Escape cancels a rebind, or closes the remap screen when no rebind is in progress.
 - While the remap screen is open, the game receives no input.
-- Keyboard screens: Escape, F1, F5, F9, F10, F11, and Ctrl+O/W/Q are reserved for the emulator and cannot be bound.
+- Keyboard screens: Escape, F1, F5, F9, F10, F11, F12, and Ctrl+O/W/Q are reserved for the emulator and cannot be bound.
 - Gamepad screens are navigated with the keyboard. Gamepad input is captured only during a rebind, and buttons that SDL does not name cannot be bound.
 
 **Emulation > Restore default bindings** resets both ports' keyboard bindings to the defaults and clears every gamepad binding.
