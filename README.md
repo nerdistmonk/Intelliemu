@@ -21,8 +21,8 @@ The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), an
 Linux only, using CMake 3.16+ and GCC. The standalone frontend needs SDL3 development files (tested with SDL 3.4.20; if your distribution does not package SDL3, build it from source).
 
 ```sh
-cmake -S . -B build                 # configure
-cmake --build build                 # builds build/freeintv_libretro.so and build/standalone/intelliemu
+cmake -S . -B release -DCMAKE_BUILD_TYPE=Release   # configure
+cmake --build release                             # builds release/freeintv_libretro.so and release/intelliemu
 ```
 
 To build only the libretro core without SDL3, configure with `-DINTELLIEMU_STANDALONE=OFF`. If CMake cannot find SDL3, add `-DCMAKE_PREFIX_PATH=<prefix>` to the configure step.
@@ -51,10 +51,14 @@ To build only the libretro core without SDL3, configure with `-DINTELLIEMU_STAND
 After building (see [Building](#building)):
 
 ```sh
-./build/standalone/intelliemu -s system Game.int
+./release/intelliemu -s system Game.int
 ```
 
-The frontend loads the core from the same build tree by default. Use `-c PATH` to load a different core, and `-s DIR` for the folder containing `exec.bin` and `grom.bin`. Run `intelliemu --help` for all options.
+The frontend loads `freeintv_libretro.so` from the build directory by default (the absolute path is baked in at build time). Use `-c PATH` to load a different core, and `-s DIR` for the folder containing `exec.bin` and `grom.bin`. Run `intelliemu --help` for all options.
+
+- **BIOS:** `exec.bin` and `grom.bin` are read from the `-s` directory, which defaults to the current working directory.
+- **Save states:** written next to the ROM, as `<ROM file name without extension>.state<slot>`.
+- **Recent ROMs:** stored in `recent.txt` under `$XDG_DATA_HOME/Intelliemu/` (usually `~/.local/share/Intelliemu/`).
 
 | Key | Action |
 | --- | --- |

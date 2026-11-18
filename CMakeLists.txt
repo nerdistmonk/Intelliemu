@@ -77,5 +77,30 @@ target_link_options(freeintv_libretro PRIVATE
 target_link_libraries(freeintv_libretro PRIVATE m)
 
 if(INTELLIEMU_STANDALONE)
-    add_subdirectory(standalone)
+    find_package(SDL3 CONFIG REQUIRED)
+
+    add_executable(intelliemu
+        standalone/main.c
+        standalone/core.c
+        standalone/input.c
+        standalone/recent.c
+        standalone/menu.c
+    )
+
+    set_target_properties(intelliemu PROPERTIES
+        C_STANDARD 11
+        C_STANDARD_REQUIRED ON
+        C_EXTENSIONS ON
+    )
+
+    target_include_directories(intelliemu PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/standalone
+        ${LIBRETRO_COMMON_DIR}/include
+    )
+
+    target_compile_options(intelliemu PRIVATE -Wall -Wextra)
+    target_link_libraries(intelliemu PRIVATE SDL3::SDL3)
+    target_compile_definitions(intelliemu PRIVATE
+        "DEFAULT_CORE=\"$<TARGET_FILE:freeintv_libretro>\""
+    )
 endif()

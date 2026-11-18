@@ -9,6 +9,7 @@
 # Build directories and artifacts
 obj/
 build/
+release/
 dist/
 bin/
 

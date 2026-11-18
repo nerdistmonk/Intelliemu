@@ -108,7 +108,7 @@ Combine with bitwise OR: `state |= K_5 | D_N` for "keypad 5 + North direction"
 | Fix emulation bugs | `cp1610.c` (CPU), `stic.c` (graphics), `psg.c` (audio) |
 | Implement UI features | `libretro.c` (rendering, touch handling) |
 | Modify save states | `libretro.c` (serialization structs) |
-| Change build system | `CMakeLists.txt`, `standalone/CMakeLists.txt` |
+| Change build system | `CMakeLists.txt` (core and standalone frontend) |
 
 ## Known Gotchas & Limitations
 
@@ -120,7 +120,7 @@ Combine with bitwise OR: `state |= K_5 | D_N` for "keypad 5 + North direction"
 ## Build & Deploy
 
 - **Libretro repository**: Changes should track with upstream libretro/FreeIntv
-- **Core release**: Plugin built as `build/freeintv_libretro.so` (Linux only)
+- **Core release**: Plugin built as `release/freeintv_libretro.so` (Linux only)
 
 ---
 
