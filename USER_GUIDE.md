@@ -139,6 +139,7 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | --- | --- | --- |
 | `scale` | 1-16 | Initial window scale. `-x` does not change it. |
 | `system_dir` | folder path | Extra folder searched for BIOS files |
+| `open_dir` | folder path | Folder the open ROM dialog starts in. Set automatically to the folder of the last ROM opened. Saved immediately. |
 | `fullscreen` | `1` or `0` | Changed with F11 or the Video menu, saved immediately, and restored at startup. |
 | `aspect_4_3` | `1` or `0` | `1` shows a 4:3 picture, `0` stretches to fill the window. Both scale to fit the window. Changed with the Video menu. Default `1`. |
 | `xbrz` | `1` or `0` | Smooths diagonal edges with a 2× xBRZ-style filter. Changed with the Video menu. Default `0`. |

@@ -417,7 +417,7 @@ static void show_open_dialog(void)
       return;
 
    dialog_pending = true;
-   SDL_ShowOpenFileDialog(open_dialog_done, NULL, window, filters, 1, NULL, false);
+   SDL_ShowOpenFileDialog(open_dialog_done, NULL, window, filters, 1, settings.open_dir, false);
 }
 
 static bool frame_due(void)
@@ -964,6 +964,27 @@ static void handle_pointer(float window_x, float window_y, bool click)
       handle_menu_action(&action);
 }
 
+/* Keeps the folder of path (with its trailing separator) as the dialog's next start folder. */
+static void remember_open_dir(const char *path)
+{
+   const char *slash = strrchr(path, '/');
+   const char *bslash = strrchr(path, '\\');
+   char *dir;
+
+   if (bslash && (!slash || bslash > slash))
+      slash = bslash;
+   if (!slash)
+      return;
+
+   dir = SDL_strndup(path, (size_t)(slash - path) + 1);
+   if (!dir)
+      return;
+
+   SDL_free(settings.open_dir);
+   settings.open_dir = dir;
+   settings_save(&settings);
+}
+
 static void handle_dialog_result(const SDL_Event *event)
 {
    char *path = event->user.data1;
@@ -973,7 +994,10 @@ static void handle_dialog_result(const SDL_Event *event)
    if (event->user.code == DIALOG_ERROR)
       SDL_strlcpy(status, "File dialog unavailable", sizeof(status));
    else if (path)
+   {
+      remember_open_dir(path);
       open_rom(path);
+   }
 
    SDL_free(path);
 }

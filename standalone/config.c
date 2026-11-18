@@ -130,6 +130,7 @@ static void settings_defaults(struct settings *s)
 {
    s->scale = DEFAULT_SCALE;
    s->system_dir = SDL_strdup(".");
+   s->open_dir = NULL;
    s->fullscreen = false;
    s->muted = false;
    s->aspect_4_3 = true;
@@ -305,6 +306,16 @@ static void apply_setting(struct settings *s, const char *key, const char *value
          s->system_dir = copy;
       }
    }
+   else if (!strcmp(key, "open_dir") && *value)
+   {
+      char *copy = SDL_strdup(value);
+
+      if (copy)
+      {
+         SDL_free(s->open_dir);
+         s->open_dir = copy;
+      }
+   }
    else
       apply_port_setting(s, key, value);
 }
@@ -401,6 +412,8 @@ bool settings_save(const struct settings *s)
          "scale = %ld\n"
          "# system_dir: extra folder searched for BIOS files (-s overrides it for one run)\n"
          "system_dir = %s\n"
+         "# open_dir: folder the open ROM dialog last opened a file from; updated automatically\n"
+         "open_dir = %s\n"
          "# fullscreen, muted, aspect_4_3, xbrz and ecs_keyboard: 1 or 0; also changed from the menu and hotkeys\n"
          "# aspect_4_3: 1 shows the picture at 4:3, 0 stretches it to fill the window\n"
          "# xbrz: 1 applies the xBRZ 2x smoothing filter\n"
@@ -420,7 +433,7 @@ bool settings_save(const struct settings *s)
          "# right_key_* and left_key_*: keyboard key for each control (SDL key names, e.g. Z or Keypad 5); empty means unbound\n"
          "# right_pad_* and left_pad_*: gamepad input for each control (SDL names, e.g. a or lefttrigger); empty means unbound\n"
          "%s",
-         MAX_SCALE, s->scale, s->system_dir ? s->system_dir : ".",
+         MAX_SCALE, s->scale, s->system_dir ? s->system_dir : ".", s->open_dir ? s->open_dir : "",
          s->fullscreen ? 1 : 0, s->muted ? 1 : 0, s->aspect_4_3 ? 1 : 0, s->xbrz ? 1 : 0,
          s->ecs_keyboard ? 1 : 0,
          s->sample_rate, s->volume,
@@ -436,4 +449,6 @@ void settings_free(struct settings *s)
 {
    SDL_free(s->system_dir);
    s->system_dir = NULL;
+   SDL_free(s->open_dir);
+   s->open_dir = NULL;
 }

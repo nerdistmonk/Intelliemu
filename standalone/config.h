@@ -21,6 +21,8 @@ struct settings
 {
    long scale;
    char *system_dir;
+   /* Folder the open ROM dialog last opened a file from. NULL means the dialog's default. */
+   char *open_dir;
    bool fullscreen;
    bool muted;
    bool aspect_4_3;
