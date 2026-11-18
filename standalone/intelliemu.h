@@ -38,16 +38,12 @@ typedef struct core
    bool (RETRO_CALLCONV *serialize)(void *data, size_t size);
    bool (RETRO_CALLCONV *unserialize)(const void *data, size_t size);
    void (RETRO_CALLCONV *keypad_event)(unsigned port, bool down, uint32_t character);
-   void (RETRO_CALLCONV *set_p1_left)(bool p1_left);
-   bool (RETRO_CALLCONV *get_p1_left)(void);
 } core_t;
 
 bool core_open(core_t *core, const char *library, const char *system_dir, const struct bios_files *bios);
 bool core_load_game(core_t *core, const char *rom_path);
 void core_close(core_t *core);
 void core_keypad_event(unsigned port, bool down, uint32_t character);
-void core_set_p1_left(bool p1_left);
-bool core_get_p1_left(void);
 
 void input_init(void);
 void input_shutdown(void);
@@ -56,6 +52,9 @@ void input_release_all(void);
 void input_after_run(void);
 void input_set_blocked(bool blocked);
 void input_set_bindings(const struct control_map bindings[PLAYER_COUNT]);
+void input_set_gamepad_ids(const char ids[PLAYER_COUNT][GAMEPAD_ID_MAX]);
+void input_get_gamepad_ids(char ids[PLAYER_COUNT][GAMEPAD_ID_MAX]);
+bool input_swap_gamepads(void);
 /* Returns the gamepad input pressed in this event (see PAD_* in controls.h), or PAD_UNBOUND. Stateless. */
 int input_pad_press_from_event(const SDL_Event *event);
 int input_pad_port(SDL_JoystickID id);

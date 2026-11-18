@@ -833,16 +833,6 @@ static void write_port(int player, int state)
 	setControllerInput(player, state | keypadMask[player]);
 }
 
-void intelliemu_set_p1_left(bool p1_left)
-{
-	controllerSwap = p1_left ? 1 : 0;
-}
-
-bool intelliemu_get_p1_left(void)
-{
-	return controllerSwap != 0;
-}
-
 void intelliemu_keypad_event(unsigned port, bool down, uint32_t character)
 {
 	int code;
@@ -1144,7 +1134,6 @@ void retro_init(void)
 		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,      "Right Action Button" },
 		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,      "Top Action Button" },
 		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,      "Last Selected Keypad Button" },
-		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT, "Swap Left/Right Controllers" },
 		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START,  "Console Pause" },
 		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L,      "Show Keypad" },
 		{ 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R,      "Show Keypad" },
@@ -1163,7 +1152,6 @@ void retro_init(void)
 		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,      "Right Action Button" },
 		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,      "Top Action Button" },
 		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,      "Last Selected Keypad Button" },
-		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT, "Swap Left/Right Controllers" },
 		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START,  "Console Pause" },
 		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L,      "Show Keypad" },
 		{ 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R,      "Show Keypad" },
@@ -1405,23 +1393,6 @@ void retro_run(void)
 		PSGFrame();
 		ivoiceBufferPos = 0.0;
 		ivoice_frame();
-	}
-
-	// Swap Left/Right Controller
-	if(joypad0[9]==1 || joypad1[9]==1)
-	{
-		if ((joypad0[9]==1 && joypre0[9]==0) || (joypad1[9]==1 && joypre1[9]==0))
-		{
-			controllerSwap = controllerSwap ^ 1;
-		}
-		if(controllerSwap==1)
-		{
-			OSD_drawLeftRight();
-		}
-		else
-		{
-			OSD_drawRightLeft();
-		}
 	}
 
 	if (intv_halt)

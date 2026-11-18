@@ -124,12 +124,11 @@ static int build_items(int title, const struct menu_state *state, struct menu_it
          add_item(items, &n, state->paused ? "Resume" : "Pause", NULL, MENU_TOGGLE_PAUSE, 0,
                state->game_running);
          add_separator(items, &n);
-         add_item(items, &n, "Remap P1 keyboard...", NULL, MENU_REMAP_P1_KEYS, 0, true);
-         add_item(items, &n, "Remap P2 keyboard...", NULL, MENU_REMAP_P2_KEYS, 0, true);
-         add_item(items, &n, "Remap P1 gamepad...", NULL, MENU_REMAP_P1_PAD, 0, true);
-         add_item(items, &n, "Remap P2 gamepad...", NULL, MENU_REMAP_P2_PAD, 0, true);
-         add_item(items, &n, state->p1_left ? "P1 uses Left controller" : "P1 uses Right controller", NULL,
-               MENU_TOGGLE_P1_SLOT, 0, true);
+         add_item(items, &n, "Remap Right keyboard...", NULL, MENU_REMAP_RIGHT_KEYS, 0, true);
+         add_item(items, &n, "Remap Left keyboard...", NULL, MENU_REMAP_LEFT_KEYS, 0, true);
+         add_item(items, &n, "Remap Right gamepad...", NULL, MENU_REMAP_RIGHT_PAD, 0, true);
+         add_item(items, &n, "Remap Left gamepad...", NULL, MENU_REMAP_LEFT_PAD, 0, true);
+         add_item(items, &n, "Swap Right and Left gamepads", NULL, MENU_SWAP_GAMEPADS, 0, true);
          add_item(items, &n, "Restore default bindings", NULL, MENU_RESET_KEYS, 0, true);
          break;
 

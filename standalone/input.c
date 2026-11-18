@@ -29,11 +29,15 @@ static const unsigned joypad_ids[CONTROL_JOYPAD_COUNT] = {
    RETRO_DEVICE_ID_JOYPAD_R,
 };
 
-/* Set by input_set_bindings(). Player N uses the Nth connected gamepad, in connection order. */
-/* Set by input_set_bindings(). Player N uses the Nth connected gamepad, in connection order. */
+/* Set by input_set_bindings(). Index 0 is the Right port and index 1 the Left port. */
 static struct control_map maps[PLAYER_COUNT];
 
 static SDL_Gamepad *pads[PLAYER_COUNT];
+
+/* Identifier of the gamepad on each port, from pad_token(). Empty when the port has no gamepad. */
+static char pad_ids[PLAYER_COUNT][GAMEPAD_ID_MAX];
+/* The gamepad each port should use, restored when it reconnects. Set by input_set_gamepad_ids(). */
+static char saved_ids[PLAYER_COUNT][GAMEPAD_ID_MAX];
 
 /* Snapshot taken in frontend_input_poll so each retro_run sees one consistent state. */
 static struct
@@ -269,22 +273,91 @@ const char *input_pad_name(int port)
    return SDL_GetGamepadName(pads[port]);
 }
 
-static void gamepad_added(SDL_JoystickID id)
+/* Returns the port that is free and saved for this gamepad identifier, or -1. */
+static int saved_port_for(const char *token)
 {
    int port;
 
-   if (port_for_pad(id) >= 0)
-      return;
+   for (port = 0; port < PLAYER_COUNT; port++)
+      if (!pads[port] && !strcmp(saved_ids[port], token))
+         return port;
+
+   return -1;
+}
+
+static int first_free_port(void)
+{
+   int port;
 
    for (port = 0; port < PLAYER_COUNT; port++)
-   {
       if (!pads[port])
-      {
-         pads[port] = SDL_OpenGamepad(id);
-         trigger_sync(port);
-         return;
-      }
+         return port;
+
+   return -1;
+}
+
+static bool pad_id_on_port(const char *token)
+{
+   int port;
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+      if (pads[port] && !strcmp(pad_ids[port], token))
+         return true;
+
+   return false;
+}
+
+/* Identifies a gamepad across sessions: its serial number, or else its GUID with a number that tells
+ * apart identical gamepads that have no serial. */
+static void pad_token(SDL_Gamepad *pad, SDL_JoystickID id, char token[GAMEPAD_ID_MAX])
+{
+   const char *serial = SDL_GetGamepadSerial(pad);
+   char guid[33];
+   int n;
+
+   if (serial && *serial)
+   {
+      SDL_strlcpy(token, serial, GAMEPAD_ID_MAX);
+      return;
    }
+
+   SDL_GUIDToString(SDL_GetGamepadGUIDForID(id), guid, sizeof guid);
+   for (n = 0;; n++)
+   {
+      SDL_snprintf(token, GAMEPAD_ID_MAX, "%s#%d", guid, n);
+      if (!pad_id_on_port(token))
+         return;
+   }
+}
+
+/* Puts a connected gamepad on a port. With saved_only, it is used only when a free port saved it. */
+static void gamepad_added(SDL_JoystickID id, bool saved_only)
+{
+   char token[GAMEPAD_ID_MAX];
+   SDL_Gamepad *pad;
+   int port;
+
+   if (port_for_pad(id) >= 0 || first_free_port() < 0)
+      return;
+
+   pad = SDL_OpenGamepad(id);
+   if (!pad)
+      return;
+
+   pad_token(pad, id, token);
+   port = saved_port_for(token);
+   if (port < 0 && !saved_only)
+      port = first_free_port();
+
+   if (port < 0)
+   {
+      SDL_CloseGamepad(pad);
+      return;
+   }
+
+   pads[port] = pad;
+   SDL_strlcpy(pad_ids[port], token, sizeof pad_ids[port]);
+   trigger_sync(port);
 }
 
 static void gamepad_removed(SDL_JoystickID id)
@@ -297,6 +370,7 @@ static void gamepad_removed(SDL_JoystickID id)
    keypad_drop_pad_entries(port);
    SDL_CloseGamepad(pads[port]);
    pads[port] = NULL;
+   pad_ids[port][0] = '\0';
    memset(trigger_down[port], 0, sizeof(trigger_down[port]));
 }
 
@@ -319,6 +393,65 @@ void input_set_bindings(const struct control_map bindings[PLAYER_COUNT])
    memcpy(maps, bindings, sizeof(maps));
 }
 
+/* Must be called before input_init(). */
+void input_set_gamepad_ids(const char ids[PLAYER_COUNT][GAMEPAD_ID_MAX])
+{
+   int port;
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+      SDL_strlcpy(saved_ids[port], ids[port], sizeof saved_ids[port]);
+}
+
+void input_get_gamepad_ids(char ids[PLAYER_COUNT][GAMEPAD_ID_MAX])
+{
+   int port;
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+      SDL_strlcpy(ids[port], saved_ids[port], sizeof ids[port]);
+}
+
+/* Exchanges the gamepads on the Right and Left ports. Each port that keeps a gamepad saves it, so the
+ * pads return to their new ports on reconnect. Returns false when neither port has a gamepad. */
+bool input_swap_gamepads(void)
+{
+   SDL_Gamepad *moved;
+   char token[GAMEPAD_ID_MAX];
+   int port;
+
+   if (!pads[0] && !pads[1])
+      return false;
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+   {
+      keypad_drop_pad_entries(port);
+      memset(trigger_down[port], 0, sizeof(trigger_down[port]));
+   }
+
+   moved = pads[0];
+   pads[0] = pads[1];
+   pads[1] = moved;
+
+   SDL_strlcpy(token, pad_ids[0], sizeof token);
+   SDL_strlcpy(pad_ids[0], pad_ids[1], sizeof pad_ids[0]);
+   SDL_strlcpy(pad_ids[1], token, sizeof pad_ids[1]);
+
+   for (port = 0; port < PLAYER_COUNT; port++)
+   {
+      int other = 1 - port;
+
+      if (!pads[port])
+         continue;
+
+      /* A gamepad is saved on one port only. */
+      if (!strcmp(saved_ids[other], pad_ids[port]))
+         saved_ids[other][0] = '\0';
+      SDL_strlcpy(saved_ids[port], pad_ids[port], sizeof saved_ids[port]);
+      trigger_sync(port);
+   }
+
+   return true;
+}
+
 void input_init(void)
 {
    int count = 0;
@@ -331,8 +464,11 @@ void input_init(void)
    if (!ids)
       return;
 
+   /* Saved gamepads claim their ports first, so an unsaved gamepad cannot take one. */
    for (i = 0; i < count; i++)
-      gamepad_added(ids[i]);
+      gamepad_added(ids[i], true);
+   for (i = 0; i < count; i++)
+      gamepad_added(ids[i], false);
 
    SDL_free(ids);
 }
@@ -348,6 +484,7 @@ void input_shutdown(void)
          SDL_CloseGamepad(pads[port]);
          pads[port] = NULL;
       }
+      pad_ids[port][0] = '\0';
    }
 
    memset(held_count, 0, sizeof(held_count));
@@ -406,7 +543,7 @@ void input_handle_event(const SDL_Event *event)
          break;
 
       case SDL_EVENT_GAMEPAD_ADDED:
-         gamepad_added(event->gdevice.which);
+         gamepad_added(event->gdevice.which, false);
          break;
 
       case SDL_EVENT_GAMEPAD_REMOVED:

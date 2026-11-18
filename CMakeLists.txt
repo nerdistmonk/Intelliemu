@@ -78,7 +78,7 @@ target_link_options(freeintv_libretro PRIVATE
 target_link_libraries(freeintv_libretro PRIVATE m)
 
 if(INTELLIEMU_STANDALONE)
-    find_package(SDL3 CONFIG REQUIRED)
+    find_package(SDL3 3.2.0 CONFIG REQUIRED)
 
     add_executable(intelliemu
         standalone/main.c

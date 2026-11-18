@@ -33,7 +33,7 @@ static const struct
    [CONTROL_KEYPAD_ENTER]  = { "keypad_enter",  "Enter" },
 };
 
-/* Player 1 uses the number row and WASD; player 2 uses the arrows, Insert/Home block, and numpad. */
+/* The Right port uses the number row and WASD; the Left port uses the arrows, Insert/Home block, and numpad. */
 static const SDL_Scancode default_keys[PLAYER_COUNT][CONTROL_COUNT] = {
    {
       [CONTROL_DISC_UP]       = SDL_SCANCODE_W,
@@ -99,9 +99,9 @@ const char *control_label(enum control c)
    return control_info[c].label;
 }
 
-SDL_Scancode control_default_key(int player, enum control c)
+SDL_Scancode control_default_key(int port, enum control c)
 {
-   return default_keys[player][c];
+   return default_keys[port][c];
 }
 
 int control_find(const char *name)

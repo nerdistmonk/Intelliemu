@@ -198,7 +198,7 @@ void remap_open(struct control_map maps[PLAYER_COUNT], int player, enum remap_de
 {
    map = &maps[player];
    device = d;
-   SDL_snprintf(title, sizeof(title), "P%d %s", player + 1, d == REMAP_GAMEPAD ? "gamepad" : "keyboard");
+   SDL_snprintf(title, sizeof(title), "%s %s", player == 0 ? "Right" : "Left", d == REMAP_GAMEPAD ? "gamepad" : "keyboard");
    is_open = true;
    capturing = false;
    column = 0;
@@ -241,7 +241,7 @@ bool remap_handle_pad(int input)
    return bind_pad(selected(), input);
 }
 
-void remap_render(SDL_Renderer *renderer, int width, int height, const char *const pad_names[PLAYER_COUNT], bool p1_left)
+void remap_render(SDL_Renderer *renderer, int width, int height, const char *const pad_names[PLAYER_COUNT])
 {
    const int col_w = width / COLUMN_COUNT;
    const float top = (float)MENU_BAR_HEIGHT;
@@ -311,12 +311,9 @@ void remap_render(SDL_Renderer *renderer, int width, int height, const char *con
    SDL_SetRenderDrawColor(renderer, 150, 150, 160, 255);
    SDL_RenderDebugText(renderer, PAD, footer + 2 * LINE_HEIGHT, "Enter rebind  Del clear  Esc close");
 
-   fit_text(name_one, sizeof(name_one), pad_names[0] ? pad_names[0] : "none", 14);
-   fit_text(name_two, sizeof(name_two), pad_names[1] ? pad_names[1] : "none", 14);
-   SDL_snprintf(text, sizeof(text), "P1: %s   P2: %s", name_one, name_two);
+   fit_text(name_one, sizeof(name_one), pad_names[0] ? pad_names[0] : "none", 12);
+   fit_text(name_two, sizeof(name_two), pad_names[1] ? pad_names[1] : "none", 12);
+   SDL_snprintf(text, sizeof(text), "Right: %s   Left: %s", name_one, name_two);
    SDL_SetRenderDrawColor(renderer, 160, 220, 255, 255);
    SDL_RenderDebugText(renderer, PAD, footer + 3 * LINE_HEIGHT, text);
-
-   SDL_snprintf(text, sizeof(text), "P1 uses %s controller (Emulation menu)", p1_left ? "Left" : "Right");
-   SDL_RenderDebugText(renderer, PAD, footer + 4 * LINE_HEIGHT, text);
 }

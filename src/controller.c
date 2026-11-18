@@ -74,8 +74,6 @@ void controllerInit()
 	controllerSwap = 0;
 	// by default input 0 maps to Right Controller (0x1FE)
 	// and input 1 maps to Left Controller (0x1FF)
-	// pressing select (freeintv_libretro.c) will
-	// swap the left and right controllers
 }
 
 void setControllerInput(int player, int state)

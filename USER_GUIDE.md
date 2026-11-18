@@ -49,7 +49,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | Menu | Items |
 | --- | --- |
 | File | Open ROM..., Close ROM, recent ROMs, Exit |
-| Emulation | Reset, Pause / Resume, Remap P1 keyboard..., Remap P2 keyboard..., Remap P1 gamepad..., Remap P2 gamepad..., P1 uses Left or Right controller, Restore default bindings |
+| Emulation | Reset, Pause / Resume, Remap Right keyboard..., Remap Left keyboard..., Remap Right gamepad..., Remap Left gamepad..., Swap Right and Left gamepads, Restore default bindings |
 | State | Save slot N, Load slot N, Next slot |
 | Video | Fullscreen |
 | Audio | Mute |
@@ -69,7 +69,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 
 ## Controls
 
-Keyboard defaults, player 1:
+Keyboard defaults, Right port:
 
 | Key | Intellivision |
 | --- | --- |
@@ -81,7 +81,7 @@ Keyboard defaults, player 1:
 | 1-9, 0 | Keypad 1-9, Keypad 0 |
 | C / V | Keypad Clear / Keypad Enter |
 
-Keyboard defaults, player 2:
+Keyboard defaults, Left port:
 
 | Key | Intellivision |
 | --- | --- |
@@ -93,25 +93,25 @@ Keyboard defaults, player 2:
 | Numpad 1-9, Numpad 0 | Keypad 1-9, Keypad 0 |
 | Numpad . / Numpad Enter | Keypad Clear / Keypad Enter |
 
-Each player has their own bindings. A control responds to its keyboard key or its gamepad input, whichever is pressed. Within one player, each key belongs to one control, and each gamepad input belongs to one control. Binding a key or input that is already in use swaps the two controls.
+Each port has its own bindings. A control responds to its keyboard key or its gamepad input, whichever is pressed. Within one port, each key belongs to one control, and each gamepad input belongs to one control. Binding a key or input that is already in use swaps the two controls.
 
-Each **Remap** entry in the Emulation menu edits one player's bindings for one device: **Remap P1 keyboard...**, **Remap P2 keyboard...**, **Remap P1 gamepad...**, or **Remap P2 gamepad...**. On a remap screen:
+Each **Remap** entry in the Emulation menu edits one port's bindings for one device: **Remap Right keyboard...**, **Remap Left keyboard...**, **Remap Right gamepad...**, or **Remap Left gamepad...**. On a remap screen:
 
-- Arrow keys move the selection. Left and Right switch between the Controller and Keypad columns. Return starts a rebind. On keyboard screens, press the new key to finish. On gamepad screens, press the new gamepad button or trigger to finish.
+- Arrow keys move the selection. The Left and Right arrow keys switch between the Controller and Keypad columns. Return starts a rebind. On keyboard screens, press the new key to finish. On gamepad screens, press the new gamepad button or trigger to finish.
 - Delete leaves the selected control unbound. An unbound control does nothing from that device.
-- If the new key or gamepad input is already used by another control of that player, the two bindings swap.
+- If the new key or gamepad input is already used by another control of that port, the two bindings swap.
 - Escape cancels a rebind, or closes the remap screen when no rebind is in progress.
 - While the remap screen is open, the game receives no input.
 - Keyboard screens: Escape, F1, F5, F9, F10, F11, and Ctrl+O/W/Q are reserved for the emulator and cannot be bound.
 - Gamepad screens are navigated with the keyboard. Gamepad input is captured only during a rebind, and buttons that SDL does not name cannot be bound.
 
-**Emulation > Restore default bindings** resets both players' keyboard bindings to the defaults and clears every gamepad binding.
+**Emulation > Restore default bindings** resets both ports' keyboard bindings to the defaults and clears every gamepad binding.
 
-Gamepad bindings start empty. Bind any gamepad button or trigger to any control with **Remap P1 gamepad...** or **Remap P2 gamepad...**. Player 1 uses the first connected gamepad and player 2 the second, in connection order.
+Gamepad bindings start empty. Bind any gamepad button or trigger to any control with **Remap Right gamepad...** or **Remap Left gamepad...**. A connected gamepad goes to the first free port, Right before Left. Gamepads are told apart by serial number when they report one. Identical gamepads without a serial number are told apart by connection order.
 
-When a gamepad connects, the window shows a notice for a few seconds naming its player and controller, such as `P1 gamepad: Xbox 360 Controller`. If both players already have a gamepad, the notice says the new one is not assigned. The bottom lines of each remap screen list the controller for P1 and P2, or `none`, and which controller slot P1 uses.
+When a gamepad connects, the window shows a notice for a few seconds naming its port and controller, such as `Right gamepad: Xbox 360 Controller`. If both ports already have a gamepad, the notice says `Gamepad not assigned: both ports already have one`. The bottom line of each remap screen lists the gamepad on each port, or `none`.
 
-**Emulation > P1 uses Left controller** (or **P1 uses Right controller**) chooses which Intellivision controller port player 1 reads. The default is Right, which matches earlier behavior. Choose Left for games that read player 1 from the left port, such as Advanced Dungeons & Dragons. Player 2 uses the other port. The choice is saved and applied each time a ROM loads. Pressing SELECT on either controller during a game swaps the slot for that session only, and the swap is not saved.
+**Emulation > Swap Right and Left gamepads** exchanges the two ports' gamepads. Bindings stay with their ports. The swap is saved: each swapped gamepad returns to its new port when it reconnects, if that port is free. The notice lists the gamepad on each port, or says `No gamepad connected to swap` when neither port has one.
 
 Controller layouts come from `gamecontrollerdb.txt`, which sits beside the `intelliemu` executable. If the file is missing, the emulator prints a warning and uses only SDL's built-in mappings.
 
@@ -133,10 +133,10 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | `system_dir` | folder path | Extra folder searched for BIOS files |
 | `fullscreen` | `1` or `0` | Changed with F11 or the Video menu, saved immediately, and restored at startup. |
 | `muted` | `1` or `0` | Changed with the Audio menu. Saved immediately. |
-| `p1_left` | `1` (Left) or `0` (Right) | Changed with the Emulation menu item for P1's controller slot. Saved immediately. Applied on each ROM load. Default `0`. |
+| `right_gamepad`, `left_gamepad` | Gamepad identifier, or empty for none | Written by **Swap Right and Left gamepads**. Saved immediately. A gamepad is identified by its serial number when it has one, otherwise by its GUID and a `#n` suffix. Only swapped gamepads are remembered. |
 | `state_slot` | 1-9 | Changed with F9 or the State menu. Saved immediately. |
-| `p1_key_<control>`, `p2_key_<control>` | SDL key name, such as `W`, `Up`, or `Keypad 1` | One line per keyboard control for each player, for example `p1_key_disc_up`. An empty value leaves the control unbound. Unknown names and reserved keys keep the current binding. If two controls of one player share a key on load, the later one is unbound. Written by the remap screens. Old `key_<control>` lines are ignored. |
-| `p1_pad_<control>`, `p2_pad_<control>` | SDL gamepad button name, such as `a`, `leftshoulder`, or `lefttrigger` | One line per gamepad control for each player, for example `p1_pad_top_action`. An empty value leaves the control unbound. Unknown names keep the current binding. Written by the remap screens. |
+| `right_key_<control>`, `left_key_<control>` | SDL key name, such as `W`, `Up`, or `Keypad 1` | One line per keyboard control for each port, for example `right_key_disc_up`. An empty value leaves the control unbound. Unknown names and reserved keys keep the current binding. If two controls of one port share a key on load, the later one is unbound. Written by the remap screens. Keys from older versions (`p1_*`, `p2_*`, `p1_left`, `key_*`) are ignored, so bindings start from the defaults. |
+| `right_pad_<control>`, `left_pad_<control>` | SDL gamepad button name, such as `a`, `leftshoulder`, or `lefttrigger` | One line per gamepad control for each port, for example `right_pad_top_action`. An empty value leaves the control unbound. Unknown names keep the current binding. Written by the remap screens. |
 
 - `recent.txt` lists recent ROM paths, newest first.
 

@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 
+/* Index 0 is the Right controller port and index 1 is the Left one. */
 #define PLAYER_COUNT 2
 
 /* Intellivision controls that a keyboard key or gamepad input can be bound to. Joypad controls come
@@ -47,28 +48,31 @@ enum control
 /* Trigger axis value (0 to 32767) at which a trigger counts as pressed. */
 #define PAD_TRIGGER_THRESHOLD 8000
 
-/* One player's bindings. A control can have a keyboard key and a gamepad input at the same time. */
+/* Room for a saved gamepad identifier (serial number or GUID), including the terminating zero. */
+#define GAMEPAD_ID_MAX 128
+
+/* One port's bindings. A control can have a keyboard key and a gamepad input at the same time. */
 struct control_map
 {
    SDL_Scancode keys[CONTROL_COUNT];
    int pads[CONTROL_COUNT];
 };
 
-/* Name used in config.ini after p1_key_ or p1_pad_. */
+/* Name used in config.ini after right_key_, right_pad_, left_key_ or left_pad_. */
 const char *control_name(enum control c);
 /* Short label for the remap screen. */
 const char *control_label(enum control c);
 /* Returns the control with this config name, or -1. */
 int control_find(const char *name);
-/* Keyboard default for a player (0 or 1). */
-SDL_Scancode control_default_key(int player, enum control c);
+/* Keyboard default for a port (0 = Right, 1 = Left). */
+SDL_Scancode control_default_key(int port, enum control c);
 
 /* Config name of a gamepad input, such as "a" or "lefttrigger". Returns NULL for an unnamed input. */
 const char *pad_name(int input);
 /* Returns the gamepad input with this config name, or PAD_UNBOUND. */
 int pad_find(const char *name);
 
-/* Restores keyboard defaults for both players and clears every gamepad binding. */
+/* Restores keyboard defaults for both ports and clears every gamepad binding. */
 void controls_reset(struct control_map maps[PLAYER_COUNT]);
 
 /* Binds key to c. If another control in the map had key, it takes c's previous key. Returns that

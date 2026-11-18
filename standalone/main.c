@@ -73,10 +73,9 @@ static bool game_running(void)
    return core.game_loaded;
 }
 
-/* The live value follows SELECT in the core; without a game, the saved setting applies. */
-static bool p1_uses_left(void)
+static const char *port_name(int port)
 {
-   return game_running() ? core_get_p1_left() : settings.p1_left;
+   return port == 0 ? "Right" : "Left";
 }
 
 /* The menu bar is drawn above the picture, so the logical canvas is one bar taller. */
@@ -247,7 +246,6 @@ static bool open_rom(const char *path)
       goto fail;
    }
 
-   core_set_p1_left(settings.p1_left);
    core.get_system_av_info(&av);
    frame_ns = (uint64_t)(1000000000.0 / av.timing.fps);
    next_frame_ns = SDL_GetTicksNS();
@@ -339,7 +337,6 @@ static void fill_menu_state(struct menu_state *state)
    state->paused = paused;
    state->fullscreen = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
    state->muted = settings.muted;
-   state->p1_left = p1_uses_left();
    state->state_slot = settings.state_slot;
    state->canvas_width = (int)pic_w;
    state->recent = &recent;
@@ -385,7 +382,7 @@ static void render(void)
       for (port = 0; port < PLAYER_COUNT; port++)
          pad_names[port] = input_pad_name(port);
 
-      remap_render(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT), pad_names, p1_uses_left());
+      remap_render(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT), pad_names);
    }
 
    fill_menu_state(&state);
@@ -524,13 +521,26 @@ static void toggle_mute(void)
    settings_save(&settings);
 }
 
-static void toggle_p1_slot(void)
+static void swap_gamepads(void)
 {
-   settings.p1_left = !p1_uses_left();
-   core_set_p1_left(settings.p1_left);
+   const char *right;
+   const char *left;
+
+   if (!input_swap_gamepads())
+   {
+      SDL_strlcpy(notice, "No gamepad connected to swap", sizeof(notice));
+      notice_until_ms = SDL_GetTicks() + NOTICE_MS;
+      return;
+   }
+
+   input_get_gamepad_ids(settings.gamepad_id);
    settings_save(&settings);
 
-   SDL_snprintf(notice, sizeof(notice), "P1 now uses the %s controller", settings.p1_left ? "Left" : "Right");
+   right = input_pad_name(0);
+   left = input_pad_name(1);
+   SDL_snprintf(notice, sizeof(notice), "Right: %s   Left: %s",
+         right ? (right[0] ? right : "unnamed") : "none",
+         left ? (left[0] ? left : "unnamed") : "none");
    notice_until_ms = SDL_GetTicks() + NOTICE_MS;
 }
 
@@ -593,24 +603,24 @@ static void handle_menu_action(const struct menu_action *action)
       case MENU_TOGGLE_MUTE:
          toggle_mute();
          break;
-      case MENU_REMAP_P1_KEYS:
+      case MENU_REMAP_RIGHT_KEYS:
          menu_close();
          remap_open(settings.bindings, 0, REMAP_KEYBOARD);
          break;
-      case MENU_REMAP_P2_KEYS:
+      case MENU_REMAP_LEFT_KEYS:
          menu_close();
          remap_open(settings.bindings, 1, REMAP_KEYBOARD);
          break;
-      case MENU_REMAP_P1_PAD:
+      case MENU_REMAP_RIGHT_PAD:
          menu_close();
          remap_open(settings.bindings, 0, REMAP_GAMEPAD);
          break;
-      case MENU_REMAP_P2_PAD:
+      case MENU_REMAP_LEFT_PAD:
          menu_close();
          remap_open(settings.bindings, 1, REMAP_GAMEPAD);
          break;
-      case MENU_TOGGLE_P1_SLOT:
-         toggle_p1_slot();
+      case MENU_SWAP_GAMEPADS:
+         swap_gamepads();
          break;
       case MENU_RESET_KEYS:
          controls_reset(settings.bindings);
@@ -715,9 +725,9 @@ static void announce_gamepad(SDL_JoystickID id)
    const char *name = port >= 0 ? input_pad_name(port) : NULL;
 
    if (port < 0)
-      SDL_strlcpy(notice, "Gamepad not assigned: both players already have one", sizeof(notice));
+      SDL_strlcpy(notice, "Gamepad not assigned: both ports already have one", sizeof(notice));
    else
-      SDL_snprintf(notice, sizeof(notice), "P%d gamepad: %s", port + 1, name && name[0] ? name : "unnamed");
+      SDL_snprintf(notice, sizeof(notice), "%s gamepad: %s", port_name(port), name && name[0] ? name : "unnamed");
 
    notice_until_ms = SDL_GetTicks() + NOTICE_MS;
 }
@@ -801,6 +811,7 @@ static int run(const struct options *opt)
       return 1;
    }
 
+   input_set_gamepad_ids(settings.gamepad_id);
    input_init();
    input_set_bindings(settings.bindings);
    open_rom_event = SDL_RegisterEvents(1);
@@ -873,13 +884,13 @@ static void usage(const char *prog)
          "\n"
          "settings: $XDG_CONFIG_HOME/Intelliemu/config.ini (default ~/.config/Intelliemu/config.ini)\n"
          "          -s and -x apply to this run only\n"
-         "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause, remap, restore bindings),\n"
+         "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause, remap, swap gamepads, restore bindings),\n"
          "      State (save, load, slot), Video (fullscreen), Audio (mute)\n"
          "hotkeys: Ctrl+O open ROM, Ctrl+W close ROM, Ctrl+Q quit,\n"
          "         F1 save state, F5 load state, F9 next slot, F10 reset,\n"
          "         F11 fullscreen, Esc close menu or quit\n"
-         "keyboard defaults: P1 = WASD disc and 0-9 keypad; P2 = arrows disc and numpad keypad\n"
-         "bindings: Emulation > Remap P1/P2 keyboard or gamepad\n",
+         "keyboard defaults: Right = WASD disc and 0-9 keypad; Left = arrows disc and numpad keypad\n"
+         "bindings: Emulation > Remap Right/Left keyboard or gamepad\n",
          prog, DEFAULT_CORE, MAX_SCALE);
 }
 

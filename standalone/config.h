@@ -17,9 +17,10 @@ struct settings
    char *system_dir;
    bool fullscreen;
    bool muted;
-   bool p1_left;
    int state_slot;
    struct control_map bindings[PLAYER_COUNT];
+   /* Gamepad saved for each port, restored when it reconnects. An empty string means none. */
+   char gamepad_id[PLAYER_COUNT][GAMEPAD_ID_MAX];
 };
 
 /* Fills s with defaults, then with values from config.ini. Creates the file if it does not exist. */
