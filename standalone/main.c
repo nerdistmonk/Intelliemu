@@ -143,6 +143,7 @@ static void run_frame(void)
    uint64_t now;
 
    core.run();
+   input_after_run();
    audio_flush();
 
    if (!audio)

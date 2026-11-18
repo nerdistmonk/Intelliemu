@@ -68,6 +68,15 @@ static struct
 static struct held_key held[KEYPAD_MAX];
 static int held_count;
 
+/* What the core was last told about the keypad, so keypad_sync() only sends changes. */
+static bool keypad_sent_down;
+static uint32_t keypad_sent_char;
+/* Set from a keypad press until the core has run, so a release can't hide the press. */
+static bool keypad_unseen;
+
+/* Joypad presses that began and ended between two core polls, OR'd into the next poll. */
+static uint16_t latched[PORT_COUNT];
+
 static uint32_t keypad_character(SDL_Scancode sc)
 {
    if (sc >= SDL_SCANCODE_1 && sc <= SDL_SCANCODE_9)
@@ -89,6 +98,26 @@ static uint32_t keypad_character(SDL_Scancode sc)
    }
 }
 
+static void keypad_send(bool down, uint32_t character)
+{
+   keypad_sent_down = down;
+   keypad_sent_char = down ? character : 0;
+   core_keyboard_event(down, character);
+}
+
+/* The core only remembers the last key it was sent, so when the newest key lifts,
+ * the key beneath it is sent again. */
+static void keypad_sync(void)
+{
+   bool down = held_count > 0;
+   uint32_t character = down ? held[held_count - 1].character : 0;
+
+   if (down == keypad_sent_down && character == keypad_sent_char)
+      return;
+
+   keypad_send(down, character);
+}
+
 static void keypad_press(SDL_Scancode sc, uint32_t character)
 {
    int i;
@@ -103,7 +132,8 @@ static void keypad_press(SDL_Scancode sc, uint32_t character)
    held[held_count].scancode = sc;
    held[held_count].character = character;
    held_count++;
-   core_keyboard_event(true, character);
+   keypad_unseen = true;
+   keypad_send(true, character);
 }
 
 static void keypad_release(SDL_Scancode sc)
@@ -120,15 +150,35 @@ static void keypad_release(SDL_Scancode sc)
    held_count--;
    memmove(&held[i], &held[i + 1], (size_t)(held_count - i) * sizeof(held[0]));
 
-   /* The core only remembers the last key it was sent, so when the newest key lifts,
-    * resend the key beneath it. Releasing an older key leaves the core state alone. */
-   if (i == held_count)
-   {
-      if (held_count > 0)
-         core_keyboard_event(true, held[held_count - 1].character);
-      else
-         core_keyboard_event(false, 0);
-   }
+   /* Deferred until input_after_run() so the core still sees a press that ended this frame. */
+   if (!keypad_unseen)
+      keypad_sync();
+}
+
+static void latch_key(SDL_Scancode sc)
+{
+   size_t i;
+
+   for (i = 0; i < SDL_arraysize(key_bindings); i++)
+      if (key_bindings[i].key == sc)
+         latched[0] |= (uint16_t)(1u << key_bindings[i].id);
+}
+
+static void latch_pad_button(SDL_JoystickID id, SDL_GamepadButton button)
+{
+   size_t i;
+   int port;
+
+   for (port = 0; port < PORT_COUNT; port++)
+      if (pads[port] && SDL_GetGamepadID(pads[port]) == id)
+         break;
+
+   if (port == PORT_COUNT)
+      return;
+
+   for (i = 0; i < SDL_arraysize(pad_bindings); i++)
+      if (pad_bindings[i].button == button)
+         latched[port] |= (uint16_t)(1u << pad_bindings[i].id);
 }
 
 static void gamepad_added(SDL_JoystickID id)
@@ -196,11 +246,16 @@ void input_shutdown(void)
 
 void input_release_all(void)
 {
-   if (held_count > 0)
-   {
-      held_count = 0;
-      core_keyboard_event(false, 0);
-   }
+   held_count = 0;
+   keypad_unseen = false;
+   keypad_sync();
+   memset(latched, 0, sizeof(latched));
+}
+
+void input_after_run(void)
+{
+   keypad_unseen = false;
+   keypad_sync();
 }
 
 void input_handle_event(const SDL_Event *event)
@@ -214,6 +269,7 @@ void input_handle_event(const SDL_Event *event)
 
             if (character)
                keypad_press(event->key.scancode, character);
+            latch_key(event->key.scancode);
          }
          break;
 
@@ -227,6 +283,10 @@ void input_handle_event(const SDL_Event *event)
 
       case SDL_EVENT_GAMEPAD_REMOVED:
          gamepad_removed(event->gdevice.which);
+         break;
+
+      case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+         latch_pad_button(event->gbutton.which, (SDL_GamepadButton)event->gbutton.button);
          break;
 
       case SDL_EVENT_WINDOW_FOCUS_LOST:
@@ -273,6 +333,8 @@ void frontend_input_poll(void)
          snapshot.axes[port][1][1] = SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHTY);
       }
 
+      bits |= latched[port];
+      latched[port] = 0;
       snapshot.buttons[port] = bits;
    }
 }
