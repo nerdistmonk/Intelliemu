@@ -1,6 +1,6 @@
 # Intelliemu
 
-Intelliemu is a standalone Mattel Intellivision emulator. It runs the freeintv libretro core in an SDL3 window, without RetroArch. Linux only.
+Intelliemu is a standalone Mattel Intellivision emulator. It runs a modified/updated freeintv libretro core in an SDL3 window, without RetroArch. GNU/Linux only.
 
 ## Authors & Contributors
 
@@ -9,7 +9,9 @@ The PSG and STIC emulation was made closer to hardware and optimized by Oscar To
 
 The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), and adapted by Oscar Toledo G. (nanochess)
 
-**Onscreen Overlay Enhancement**: Onscreen interactive keypad overlays with touchscreen (Android) and mouse (Windows/Linux) support (November 2025) by Jason Carr
+**Onscreen Overlay Enhancement**: Onscreen interactive keypad overlays by Jason Carr
+
+**SDL3 GNU/Linux Port**: Created by R.Shaklfrd and Claude Haiku.
 
 <div style="margin: 18px 0;"><img width="1056" height="708" alt="Intelliemu running Astrosmash" src="screenshots/astrosmash.png" style="border:2px solid #FFD700; border-radius:6px;" /></div>
 
@@ -45,7 +47,7 @@ To build only the libretro core without SDL3, configure with `-DINTELLIEMU_STAND
 See [USER_GUIDE.md](USER_GUIDE.md) for running games, menus, controls, settings, and known limitations.
 
 ## License
-The FreeIntv core is licensed under GPLv2+. More information at https://github.com/libretro/FreeIntv/blob/master/LICENSE
+The FreeIntv core is licensed under GPLv2+.
 
 ## BIOS
 Intelliemu needs two Intellivision BIOS images. It searches these folders in order, and uses the first matching file for each image:
