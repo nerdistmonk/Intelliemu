@@ -12,6 +12,8 @@ add_executable(intelliemu
     main.c
     core.c
     input.c
+    recent.c
+    menu.c
 )
 
 target_include_directories(intelliemu PRIVATE

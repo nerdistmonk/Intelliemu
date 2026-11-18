@@ -46,6 +46,7 @@ void input_shutdown(void);
 void input_handle_event(const SDL_Event *event);
 void input_release_all(void);
 void input_after_run(void);
+void input_set_blocked(bool blocked);
 
 /* Implemented by main.c and input.c; called by the core. */
 void frontend_video_refresh(const void *data, unsigned width, unsigned height, size_t pitch);

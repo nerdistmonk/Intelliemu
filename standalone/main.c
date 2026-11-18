@@ -6,6 +6,8 @@
 #include <SDL3/SDL_main.h>
 
 #include "intelliemu.h"
+#include "menu.h"
+#include "recent.h"
 
 #ifdef _WIN32
 #define DEFAULT_CORE "./freeintv_libretro.dll"
@@ -13,11 +15,17 @@
 #define DEFAULT_CORE "./freeintv_libretro.so"
 #endif
 
+#define DEFAULT_WIDTH 352
+#define DEFAULT_HEIGHT 224
+#define DEBUG_CHAR_W 8
 #define DEFAULT_SCALE 3
 #define MAX_SCALE 16
 #define MAX_STATE_SLOT 9
 #define STAGE_FRAMES 4096
 #define AUDIO_LEAD_FRAMES 3
+#define DIALOG_RESULT 0
+#define DIALOG_ERROR 1
+#define OPEN_ROM_ERROR "Could not load ROM"
 
 struct options
 {
@@ -29,20 +37,44 @@ struct options
 };
 
 static core_t core;
-static const char *rom_file;
+static const char *core_path;
+static const char *system_dir;
+static char *rom_file;
+static long window_scale;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *texture;
 static unsigned texture_w, texture_h;
+static unsigned pic_w = DEFAULT_WIDTH, pic_h = DEFAULT_HEIGHT;
+static bool audio_subsystem;
 static SDL_AudioStream *audio;
 static int audio_lead_bytes;
 static uint64_t frame_ns;
 static uint64_t next_frame_ns;
 static int state_slot = 1;
 static bool quit_requested;
+static bool paused;
+static bool muted;
+static bool dialog_pending;
+static Uint32 open_rom_event;
+static char status[64];
+static struct recent_list recent;
 static int16_t stage[STAGE_FRAMES * 2];
 static size_t stage_frames;
 static bool audio_error_reported;
+
+static bool game_running(void)
+{
+   return core.game_loaded;
+}
+
+/* The menu bar is drawn above the picture, so the logical canvas is one bar taller. */
+static void update_presentation(void)
+{
+   if (renderer)
+      SDL_SetRenderLogicalPresentation(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT),
+            SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+}
 
 void frontend_video_refresh(const void *data, unsigned width, unsigned height, size_t pitch)
 {
@@ -64,10 +96,11 @@ void frontend_video_refresh(const void *data, unsigned width, unsigned height, s
       }
 
       SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
-      SDL_SetRenderLogicalPresentation(renderer, (int)width, (int)height,
-            SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
       texture_w = width;
       texture_h = height;
+      pic_w = width;
+      pic_h = height;
+      update_presentation();
    }
 
    SDL_UpdateTexture(texture, NULL, data, (int)pitch);
@@ -114,11 +147,8 @@ static void audio_open(int sample_rate)
 {
    SDL_AudioSpec spec = { .format = SDL_AUDIO_S16, .channels = 2, .freq = sample_rate };
 
-   if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
-   {
-      fprintf(stderr, "audio disabled, pacing by timer: %s\n", SDL_GetError());
+   if (!audio_subsystem)
       return;
-   }
 
    audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL);
    if (!audio)
@@ -127,7 +157,143 @@ static void audio_open(int sample_rate)
       return;
    }
 
+   SDL_SetAudioStreamGain(audio, muted ? 0.0f : 1.0f);
    SDL_ResumeAudioStreamDevice(audio);
+}
+
+static void set_title(void)
+{
+   char *title = NULL;
+   const char *name = rom_file ? path_basename(rom_file) : NULL;
+
+   if (!window)
+      return;
+
+   if (!name || SDL_asprintf(&title, "Intelliemu - %s", name) < 0)
+      SDL_SetWindowTitle(window, "Intelliemu");
+   else
+      SDL_SetWindowTitle(window, title);
+
+   SDL_free(title);
+}
+
+static void resize_window(void)
+{
+   if (!window || (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN))
+      return;
+
+   SDL_SetWindowSize(window, (int)(pic_w * (unsigned)window_scale),
+         (int)((pic_h + MENU_BAR_HEIGHT) * (unsigned)window_scale));
+}
+
+static void close_game(void)
+{
+   input_release_all();
+   core_close(&core);
+
+   if (audio)
+   {
+      SDL_DestroyAudioStream(audio);
+      audio = NULL;
+   }
+   stage_frames = 0;
+
+   if (texture)
+   {
+      SDL_DestroyTexture(texture);
+      texture = NULL;
+   }
+   texture_w = 0;
+   texture_h = 0;
+
+   SDL_free(rom_file);
+   rom_file = NULL;
+   paused = false;
+   pic_w = DEFAULT_WIDTH;
+   pic_h = DEFAULT_HEIGHT;
+
+   update_presentation();
+   set_title();
+}
+
+static bool open_rom(const char *path)
+{
+   /* The copy comes first: path may point into the recent list, which recent_add rewrites. */
+   char *copy = SDL_strdup(path);
+   struct retro_system_av_info av;
+
+   if (!copy)
+      return false;
+
+   close_game();
+
+   if (!core_open(&core, core_path, system_dir))
+      goto fail;
+
+   if (!core_load_game(&core, copy))
+   {
+      core_close(&core);
+      goto fail;
+   }
+
+   core.get_system_av_info(&av);
+   frame_ns = (uint64_t)(1000000000.0 / av.timing.fps);
+   next_frame_ns = SDL_GetTicksNS();
+   audio_lead_bytes = (int)(av.timing.sample_rate / av.timing.fps * AUDIO_LEAD_FRAMES) * 2 * (int)sizeof(int16_t);
+   pic_w = av.geometry.base_width;
+   pic_h = av.geometry.base_height;
+
+   audio_open((int)av.timing.sample_rate);
+
+   rom_file = copy;
+   status[0] = '\0';
+   recent_add(&recent, rom_file);
+
+   update_presentation();
+   resize_window();
+   set_title();
+   return true;
+
+fail:
+   SDL_strlcpy(status, OPEN_ROM_ERROR, sizeof(status));
+   SDL_free(copy);
+   return false;
+}
+
+static void SDLCALL open_dialog_done(void *userdata, const char *const *filelist, int filter)
+{
+   SDL_Event event;
+   char *path = NULL;
+
+   (void)userdata;
+   (void)filter;
+
+   if (!filelist)
+   {
+      fprintf(stderr, "file dialog failed: %s\n", SDL_GetError());
+   }
+   else if (filelist[0])
+   {
+      path = SDL_strdup(filelist[0]);
+   }
+
+   SDL_zero(event);
+   event.type = open_rom_event;
+   event.user.code = filelist ? DIALOG_RESULT : DIALOG_ERROR;
+   event.user.data1 = path;
+   if (!SDL_PushEvent(&event))
+      SDL_free(path);
+}
+
+static void show_open_dialog(void)
+{
+   static const SDL_DialogFileFilter filters[] = { { "Intellivision ROMs", "int;bin;rom" } };
+
+   if (dialog_pending)
+      return;
+
+   dialog_pending = true;
+   SDL_ShowOpenFileDialog(open_dialog_done, NULL, window, filters, 1, NULL, false);
 }
 
 static bool frame_due(void)
@@ -155,16 +321,51 @@ static void run_frame(void)
    }
 }
 
+static void fill_menu_state(struct menu_state *state)
+{
+   state->game_running = game_running();
+   state->paused = paused;
+   state->fullscreen = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+   state->muted = muted;
+   state->state_slot = state_slot;
+   state->canvas_width = (int)pic_w;
+   state->recent = &recent;
+}
+
+static void draw_centered(float y, const char *text)
+{
+   float x = ((float)pic_w - (float)(strlen(text) * DEBUG_CHAR_W)) / 2;
+
+   SDL_RenderDebugText(renderer, x < 0 ? 0 : x, y, text);
+}
+
 static void render(void)
 {
+   struct menu_state state;
+   SDL_FRect dst = { 0, MENU_BAR_HEIGHT, (float)texture_w, (float)texture_h };
+   float mid = MENU_BAR_HEIGHT + (float)pic_h / 2;
+
    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
    SDL_RenderClear(renderer);
 
+   SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
    if (texture)
-      SDL_RenderTexture(renderer, texture, NULL, NULL);
+   {
+      SDL_RenderTexture(renderer, texture, NULL, &dst);
+      if (paused)
+         SDL_RenderDebugText(renderer, 4, MENU_BAR_HEIGHT + 4, "PAUSED");
+   }
+   else
+   {
+      draw_centered(mid - 12, status[0] ? status : "No game loaded");
+      draw_centered(mid + 4, "File > Open ROM... (Ctrl+O)");
+   }
 
+   fill_menu_state(&state);
+   menu_render(renderer, &state);
    SDL_RenderPresent(renderer);
 }
+
 
 static int stem_length(const char *path)
 {
@@ -231,9 +432,16 @@ static bool read_file(const char *path, void *data, size_t size)
 
 static void save_state(void)
 {
-   size_t size = core.serialize_size();
-   void *buf = SDL_malloc(size);
-   char *path = state_path(state_slot);
+   size_t size;
+   void *buf;
+   char *path;
+
+   if (!game_running())
+      return;
+
+   size = core.serialize_size();
+   buf = SDL_malloc(size);
+   path = state_path(state_slot);
 
    if (buf && path && core.serialize(buf, size) && write_file(path, buf, size))
       fprintf(stderr, "saved state slot %d to %s\n", state_slot, path);
@@ -246,9 +454,16 @@ static void save_state(void)
 
 static void load_state(void)
 {
-   size_t size = core.serialize_size();
-   void *buf = SDL_malloc(size);
-   char *path = state_path(state_slot);
+   size_t size;
+   void *buf;
+   char *path;
+
+   if (!game_running())
+      return;
+
+   size = core.serialize_size();
+   buf = SDL_malloc(size);
+   path = state_path(state_slot);
 
    if (buf && path && read_file(path, buf, size) && core.unserialize(buf, size))
    {
@@ -272,32 +487,174 @@ static void toggle_fullscreen(void)
    SDL_SetWindowFullscreen(window, !(flags & SDL_WINDOW_FULLSCREEN));
 }
 
-static void handle_hotkey(SDL_Scancode key)
+static void toggle_mute(void)
 {
-   switch (key)
+   muted = !muted;
+   if (audio)
+      SDL_SetAudioStreamGain(audio, muted ? 0.0f : 1.0f);
+}
+
+static void cycle_state_slot(void)
+{
+   state_slot = state_slot % MAX_STATE_SLOT + 1;
+   fprintf(stderr, "state slot %d\n", state_slot);
+}
+
+static void handle_menu_action(const struct menu_action *action)
+{
+   switch (action->command)
    {
-      case SDL_SCANCODE_ESCAPE:
+      case MENU_OPEN_ROM:
+         show_open_dialog();
+         break;
+      case MENU_CLOSE_ROM:
+         close_game();
+         status[0] = '\0';
+         break;
+      case MENU_RECENT:
+         {
+            char *path = SDL_strdup(recent.paths[action->arg]);
+
+            if (path)
+               open_rom(path);
+            SDL_free(path);
+         }
+         break;
+      case MENU_EXIT:
          quit_requested = true;
          break;
-      case SDL_SCANCODE_F1:
+      case MENU_RESET:
+         if (game_running())
+            core.reset();
+         break;
+      case MENU_TOGGLE_PAUSE:
+         if (game_running())
+            paused = !paused;
+         break;
+      case MENU_SAVE_STATE:
          save_state();
          break;
-      case SDL_SCANCODE_F5:
+      case MENU_LOAD_STATE:
          load_state();
          break;
-      case SDL_SCANCODE_F9:
-         state_slot = state_slot % MAX_STATE_SLOT + 1;
-         fprintf(stderr, "state slot %d\n", state_slot);
+      case MENU_NEXT_SLOT:
+         cycle_state_slot();
          break;
-      case SDL_SCANCODE_F10:
-         core.reset();
-         break;
-      case SDL_SCANCODE_F11:
+      case MENU_TOGGLE_FULLSCREEN:
          toggle_fullscreen();
+         break;
+      case MENU_TOGGLE_MUTE:
+         toggle_mute();
          break;
       default:
          break;
    }
+}
+
+static enum menu_command hotkey_command(const SDL_KeyboardEvent *key)
+{
+   if (key->mod & SDL_KMOD_CTRL)
+   {
+      switch (key->scancode)
+      {
+         case SDL_SCANCODE_O:
+            return MENU_OPEN_ROM;
+         case SDL_SCANCODE_W:
+            return MENU_CLOSE_ROM;
+         case SDL_SCANCODE_Q:
+            return MENU_EXIT;
+         default:
+            break;
+      }
+   }
+
+   switch (key->scancode)
+   {
+      case SDL_SCANCODE_F1:
+         return MENU_SAVE_STATE;
+      case SDL_SCANCODE_F5:
+         return MENU_LOAD_STATE;
+      case SDL_SCANCODE_F9:
+         return MENU_NEXT_SLOT;
+      case SDL_SCANCODE_F10:
+         return MENU_RESET;
+      case SDL_SCANCODE_F11:
+         return MENU_TOGGLE_FULLSCREEN;
+      default:
+         return MENU_NONE;
+   }
+}
+
+static void handle_key(const SDL_KeyboardEvent *key)
+{
+   struct menu_action action = { MENU_NONE, 0 };
+
+   if (key->scancode == SDL_SCANCODE_ESCAPE)
+   {
+      if (menu_is_open())
+         menu_close();
+      else
+         quit_requested = true;
+      return;
+   }
+
+   action.command = hotkey_command(key);
+   handle_menu_action(&action);
+}
+
+static void handle_pointer(float window_x, float window_y, bool click)
+{
+   struct menu_state state;
+   struct menu_action action = { MENU_NONE, 0 };
+   float x, y;
+
+   if (!SDL_RenderCoordinatesFromWindow(renderer, window_x, window_y, &x, &y))
+      return;
+
+   if (!click)
+   {
+      menu_hover(x, y);
+      return;
+   }
+
+   fill_menu_state(&state);
+   if (menu_click(&state, x, y, &action))
+      handle_menu_action(&action);
+}
+
+static void handle_dialog_result(const SDL_Event *event)
+{
+   char *path = event->user.data1;
+
+   dialog_pending = false;
+
+   if (event->user.code == DIALOG_ERROR)
+      SDL_strlcpy(status, "File dialog unavailable", sizeof(status));
+   else if (path)
+      open_rom(path);
+
+   SDL_free(path);
+}
+
+static void handle_event(const SDL_Event *event)
+{
+   if (event->type == SDL_EVENT_QUIT)
+      quit_requested = true;
+   else if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat)
+      handle_key(&event->key);
+   else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT)
+      handle_pointer(event->button.x, event->button.y, true);
+   else if (event->type == SDL_EVENT_MOUSE_MOTION)
+      handle_pointer(event->motion.x, event->motion.y, false);
+   else if (event->type == open_rom_event)
+      handle_dialog_result(event);
+
+   input_handle_event(event);
+}
+
+static void update_input_block(void)
+{
+   input_set_blocked(menu_is_open() || paused || !game_running());
 }
 
 static void main_loop(long max_frames)
@@ -311,16 +668,11 @@ static void main_loop(long max_frames)
       SDL_Event event;
 
       while (SDL_PollEvent(&event))
-      {
-         if (event.type == SDL_EVENT_QUIT)
-            quit_requested = true;
-         else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat)
-            handle_hotkey(event.key.scancode);
+         handle_event(&event);
 
-         input_handle_event(&event);
-      }
+      update_input_block();
 
-      if (frame_due())
+      if (game_running() && !paused && frame_due())
       {
          run_frame();
          frames_run++;
@@ -336,6 +688,7 @@ static void main_loop(long max_frames)
          quit_requested = true;
    }
 }
+
 
 static void warn_missing_bios(const char *dir)
 {
@@ -357,10 +710,11 @@ static void warn_missing_bios(const char *dir)
 
 static int run(const struct options *opt)
 {
-   struct retro_system_av_info av;
-   int status = 1;
+   int status_code = 1;
 
-   rom_file = opt->rom;
+   core_path = opt->core_path;
+   system_dir = opt->system_dir;
+   window_scale = opt->scale;
 
    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
    {
@@ -369,17 +723,22 @@ static int run(const struct options *opt)
    }
 
    input_init();
-
-   if (!core_open(&core, opt->core_path, opt->system_dir) || !core_load_game(&core, opt->rom))
+   open_rom_event = SDL_RegisterEvents(1);
+   if (!open_rom_event)
+   {
+      fprintf(stderr, "cannot register events: %s\n", SDL_GetError());
       goto cleanup;
+   }
 
-   core.get_system_av_info(&av);
-   frame_ns = (uint64_t)(1000000000.0 / av.timing.fps);
-   audio_lead_bytes = (int)(av.timing.sample_rate / av.timing.fps * AUDIO_LEAD_FRAMES) * 2 * (int)sizeof(int16_t);
+   audio_subsystem = SDL_InitSubSystem(SDL_INIT_AUDIO);
+   if (!audio_subsystem)
+      fprintf(stderr, "audio disabled, pacing by timer: %s\n", SDL_GetError());
+
+   recent_load(&recent);
 
    window = SDL_CreateWindow("Intelliemu",
-         (int)(av.geometry.base_width * (unsigned)opt->scale),
-         (int)(av.geometry.base_height * (unsigned)opt->scale),
+         (int)(DEFAULT_WIDTH * (unsigned)opt->scale),
+         (int)((DEFAULT_HEIGHT + MENU_BAR_HEIGHT) * (unsigned)opt->scale),
          SDL_WINDOW_RESIZABLE);
    if (!window)
    {
@@ -395,43 +754,50 @@ static int run(const struct options *opt)
    }
 
    SDL_SetRenderVSync(renderer, 1);
-   audio_open((int)av.timing.sample_rate);
+   update_presentation();
+   set_title();
+
+   if (opt->rom && !open_rom(opt->rom))
+      goto cleanup;
 
    main_loop(opt->max_frames);
-   status = 0;
+   status_code = 0;
 
 cleanup:
    input_release_all();
    input_shutdown();
-   if (audio)
-      SDL_DestroyAudioStream(audio);
+   close_game();
    if (texture)
       SDL_DestroyTexture(texture);
    if (renderer)
       SDL_DestroyRenderer(renderer);
    if (window)
       SDL_DestroyWindow(window);
-   core_close(&core);
+   recent_free(&recent);
    SDL_Quit();
-   return status;
+   return status_code;
 }
 
 static void usage(const char *prog)
 {
    fprintf(stderr,
-         "usage: %s [options] GAME\n"
+         "usage: %s [options] [GAME]\n"
          "  -c, --core PATH    libretro core library (default: %s)\n"
          "  -s, --system DIR   directory with exec.bin and grom.bin (default: .)\n"
          "  -x, --scale N      initial window scale, 1-%d (default: %d)\n"
-         "  -f, --frames N     exit after N frames (for testing)\n"
+         "  -f, --frames N     exit after N frames (requires GAME; for testing)\n"
          "  -h, --help         show this help\n"
          "\n"
-         "hotkeys: F1 save state, F5 load state, F9 next slot, F10 reset,\n"
-         "         F11 fullscreen, Esc quit\n"
+         "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause),\n"
+         "      State (save, load, slot), Video (fullscreen), Audio (mute)\n"
+         "hotkeys: Ctrl+O open ROM, Ctrl+W close ROM, Ctrl+Q quit,\n"
+         "         F1 save state, F5 load state, F9 next slot, F10 reset,\n"
+         "         F11 fullscreen, Esc close menu or quit\n"
          "keyboard (player 1): arrows = D-pad, Z/X/C/V = A/B/Y/X, Q/E = L/R,\n"
          "         Return = start, Backspace = select, 0-9 / [ / ] = keypad\n",
          prog, DEFAULT_CORE, MAX_SCALE, DEFAULT_SCALE);
 }
+
 
 static bool parse_long(const char *text, long min, long max, long *value)
 {
@@ -496,8 +862,9 @@ int main(int argc, char *argv[])
       }
    }
 
-   if (!opt.rom)
+   if (opt.max_frames >= 0 && !opt.rom)
    {
+      fprintf(stderr, "--frames needs a GAME to run\n");
       usage(argv[0]);
       return 2;
    }

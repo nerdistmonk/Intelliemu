@@ -77,6 +77,9 @@ static bool keypad_unseen;
 /* Joypad presses that began and ended between two core polls, OR'd into the next poll. */
 static uint16_t latched[PORT_COUNT];
 
+/* While blocked (menu open, paused, or no game), the core sees no input. Releases still count. */
+static bool blocked;
+
 static uint32_t keypad_character(SDL_Scancode sc)
 {
    if (sc >= SDL_SCANCODE_1 && sc <= SDL_SCANCODE_9)
@@ -258,12 +261,22 @@ void input_after_run(void)
    keypad_sync();
 }
 
+void input_set_blocked(bool value)
+{
+   if (value == blocked)
+      return;
+
+   blocked = value;
+   if (blocked)
+      input_release_all();
+}
+
 void input_handle_event(const SDL_Event *event)
 {
    switch (event->type)
    {
       case SDL_EVENT_KEY_DOWN:
-         if (!event->key.repeat)
+         if (!event->key.repeat && !blocked)
          {
             uint32_t character = keypad_character(event->key.scancode);
 
@@ -286,7 +299,8 @@ void input_handle_event(const SDL_Event *event)
          break;
 
       case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-         latch_pad_button(event->gbutton.which, (SDL_GamepadButton)event->gbutton.button);
+         if (!blocked)
+            latch_pad_button(event->gbutton.which, (SDL_GamepadButton)event->gbutton.button);
          break;
 
       case SDL_EVENT_WINDOW_FOCUS_LOST:
@@ -300,11 +314,19 @@ void input_handle_event(const SDL_Event *event)
 
 void frontend_input_poll(void)
 {
-   const bool *keys = SDL_GetKeyboardState(NULL);
+   const bool *keys;
    uint16_t keyboard_bits = 0;
    size_t i;
    int port;
 
+   if (blocked)
+   {
+      memset(&snapshot, 0, sizeof(snapshot));
+      memset(latched, 0, sizeof(latched));
+      return;
+   }
+
+   keys = SDL_GetKeyboardState(NULL);
    for (i = 0; i < SDL_arraysize(key_bindings); i++)
       if (keys[key_bindings[i].key])
          keyboard_bits |= (uint16_t)(1u << key_bindings[i].id);
