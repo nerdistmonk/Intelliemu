@@ -90,6 +90,7 @@ if(INTELLIEMU_STANDALONE)
         standalone/recent.c
         standalone/menu.c
         standalone/remap.c
+        standalone/xbrz.c
     )
 
     set_target_properties(intelliemu PROPERTIES

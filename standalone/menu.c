@@ -143,6 +143,12 @@ static int build_items(int title, const struct menu_state *state, struct menu_it
       case 3:
          add_item(items, &n, state->fullscreen ? "[x] Fullscreen" : "[ ] Fullscreen", "F11",
                MENU_TOGGLE_FULLSCREEN, 0, true);
+         add_item(items, &n, state->aspect_4_3 ? "[x] 4:3 aspect" : "[ ] 4:3 aspect", NULL,
+               MENU_TOGGLE_ASPECT, 0, true);
+         add_item(items, &n, state->xbrz ? "[x] xBRZ filter" : "[ ] xBRZ filter", NULL,
+               MENU_TOGGLE_XBRZ, 0, true);
+         add_separator(items, &n);
+         add_item(items, &n, "Screenshot (PNG)", "F12", MENU_SCREENSHOT, 0, state->game_running);
          break;
 
       case 4:

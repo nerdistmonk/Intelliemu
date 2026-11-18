@@ -22,6 +22,9 @@ enum menu_command
    MENU_LOAD_STATE,
    MENU_NEXT_SLOT,
    MENU_TOGGLE_FULLSCREEN,
+   MENU_TOGGLE_ASPECT,
+   MENU_TOGGLE_XBRZ,
+   MENU_SCREENSHOT,
    MENU_TOGGLE_MUTE,
    MENU_REMAP_RIGHT_KEYS,
    MENU_REMAP_LEFT_KEYS,
@@ -37,6 +40,8 @@ struct menu_state
    bool paused;
    bool fullscreen;
    bool muted;
+   bool aspect_4_3;
+   bool xbrz;
    int state_slot;
    int canvas_width;
    const struct recent_list *recent;

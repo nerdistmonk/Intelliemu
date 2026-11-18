@@ -130,6 +130,8 @@ static void settings_defaults(struct settings *s)
    s->system_dir = SDL_strdup(".");
    s->fullscreen = false;
    s->muted = false;
+   s->aspect_4_3 = true;
+   s->xbrz = false;
    s->state_slot = 1;
    controls_reset(s->bindings);
    for (int p = 0; p < PLAYER_COUNT; p++)
@@ -269,6 +271,10 @@ static void apply_setting(struct settings *s, const char *key, const char *value
       apply_flag(&s->fullscreen, value);
    else if (!strcmp(key, "muted"))
       apply_flag(&s->muted, value);
+   else if (!strcmp(key, "aspect_4_3"))
+      apply_flag(&s->aspect_4_3, value);
+   else if (!strcmp(key, "xbrz"))
+      apply_flag(&s->xbrz, value);
    else if (!strcmp(key, "system_dir") && *value)
    {
       char *copy = SDL_strdup(value);
@@ -375,9 +381,13 @@ bool settings_save(const struct settings *s)
          "scale = %ld\n"
          "# system_dir: extra folder searched for BIOS files (-s overrides it for one run)\n"
          "system_dir = %s\n"
-         "# fullscreen and muted: 1 or 0; also changed from the menu and hotkeys\n"
+         "# fullscreen, muted, aspect_4_3 and xbrz: 1 or 0; also changed from the menu and hotkeys\n"
+         "# aspect_4_3: 1 shows the picture at 4:3, 0 stretches it to fill the window\n"
+         "# xbrz: 1 applies the xBRZ 2x smoothing filter\n"
          "fullscreen = %d\n"
          "muted = %d\n"
+         "aspect_4_3 = %d\n"
+         "xbrz = %d\n"
          "# state_slot: save state slot, 1-%d; also changed with F9 or the State menu\n"
          "state_slot = %d\n"
          "# right_gamepad and left_gamepad: gamepad saved for each port; empty means none\n"
@@ -385,7 +395,8 @@ bool settings_save(const struct settings *s)
          "# right_pad_* and left_pad_*: gamepad input for each control (SDL names, e.g. a or lefttrigger); empty means unbound\n"
          "%s",
          MAX_SCALE, s->scale, s->system_dir ? s->system_dir : ".",
-         s->fullscreen ? 1 : 0, s->muted ? 1 : 0, MAX_STATE_SLOT, s->state_slot, bindings_text) < 0)
+         s->fullscreen ? 1 : 0, s->muted ? 1 : 0, s->aspect_4_3 ? 1 : 0, s->xbrz ? 1 : 0,
+         MAX_STATE_SLOT, s->state_slot, bindings_text) < 0)
       return false;
 
    ok = config_write(SETTINGS_FILE, text);

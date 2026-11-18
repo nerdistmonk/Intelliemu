@@ -1,4 +1,5 @@
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 #include "menu.h"
 #include "recent.h"
 #include "remap.h"
+#include "xbrz.h"
 
 #ifndef DEFAULT_CORE
 #ifdef _WIN32
@@ -28,6 +30,7 @@
 #define DIALOG_RESULT 0
 #define DIALOG_ERROR 1
 #define OPEN_ROM_ERROR "Could not load ROM"
+#define MAX_SCREENSHOT 999
 
 struct options
 {
@@ -67,6 +70,12 @@ static struct recent_list recent;
 static int16_t stage[STAGE_FRAMES * 2];
 static size_t stage_frames;
 static bool audio_error_reported;
+/* Packed copy of the last core frame (4 bytes per pixel), for screenshots and xBRZ changes. */
+static void *last_frame;
+static size_t last_frame_size;
+static unsigned last_w, last_h;
+static void *xbrz_frame;
+static size_t xbrz_frame_size;
 
 static bool game_running(void)
 {
@@ -78,12 +87,89 @@ static const char *port_name(int port)
    return port == 0 ? "Right" : "Left";
 }
 
+/* 4:3 mode stretches the picture vertically to pic_w * 3 / 4 so its shape is 4:3. */
+static unsigned view_height(void)
+{
+   return settings.aspect_4_3 ? pic_w * 3 / 4 : pic_h;
+}
+
 /* The menu bar is drawn above the picture, so the logical canvas is one bar taller. */
 static void update_presentation(void)
 {
    if (renderer)
-      SDL_SetRenderLogicalPresentation(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT),
-            SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+      SDL_SetRenderLogicalPresentation(renderer, (int)pic_w, (int)(view_height() + MENU_BAR_HEIGHT),
+            settings.aspect_4_3 ? SDL_LOGICAL_PRESENTATION_LETTERBOX : SDL_LOGICAL_PRESENTATION_STRETCH);
+}
+
+static bool reserve(void **buf, size_t *size, size_t need)
+{
+   void *grown;
+
+   if (*size >= need)
+      return true;
+
+   grown = SDL_realloc(*buf, need);
+   if (!grown)
+      return false;
+
+   *buf = grown;
+   *size = need;
+   return true;
+}
+
+/* Uploads a packed XRGB frame. With xBRZ on, the texture is twice as large in each direction. */
+static void present_frame(const void *frame, unsigned width, unsigned height)
+{
+   unsigned scale = settings.xbrz ? XBRZ_SCALE : 1;
+   unsigned tex_w = width * scale;
+   unsigned tex_h = height * scale;
+
+   if (!texture || texture_w != tex_w || texture_h != tex_h)
+   {
+      if (texture)
+         SDL_DestroyTexture(texture);
+
+      texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_XRGB8888,
+            SDL_TEXTUREACCESS_STREAMING, (int)tex_w, (int)tex_h);
+      if (!texture)
+      {
+         fprintf(stderr, "cannot create video texture: %s\n", SDL_GetError());
+         texture_w = 0;
+         texture_h = 0;
+         return;
+      }
+
+      SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+      texture_w = tex_w;
+      texture_h = tex_h;
+   }
+
+   if (settings.xbrz)
+   {
+      if (!reserve(&xbrz_frame, &xbrz_frame_size, (size_t)tex_w * tex_h * 4))
+         return;
+
+      xbrz_scale(frame, (size_t)width * 4, xbrz_frame, (int)width, (int)height);
+      SDL_UpdateTexture(texture, NULL, xbrz_frame, (int)(tex_w * 4));
+   }
+   else
+      SDL_UpdateTexture(texture, NULL, frame, (int)(width * 4));
+}
+
+static bool remember_frame(const void *data, unsigned width, unsigned height, size_t pitch)
+{
+   size_t row = (size_t)width * 4;
+   unsigned y;
+
+   if (!reserve(&last_frame, &last_frame_size, row * height))
+      return false;
+
+   for (y = 0; y < height; y++)
+      SDL_memcpy((unsigned char *)last_frame + y * row, (const unsigned char *)data + y * pitch, row);
+
+   last_w = width;
+   last_h = height;
+   return true;
 }
 
 void frontend_video_refresh(const void *data, unsigned width, unsigned height, size_t pitch)
@@ -92,28 +178,15 @@ void frontend_video_refresh(const void *data, unsigned width, unsigned height, s
    if (!data)
       return;
 
-   if (!texture || texture_w != width || texture_h != height)
+   if (pic_w != width || pic_h != height)
    {
-      if (texture)
-         SDL_DestroyTexture(texture);
-
-      texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_XRGB8888,
-            SDL_TEXTUREACCESS_STREAMING, (int)width, (int)height);
-      if (!texture)
-      {
-         fprintf(stderr, "cannot create video texture: %s\n", SDL_GetError());
-         return;
-      }
-
-      SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
-      texture_w = width;
-      texture_h = height;
       pic_w = width;
       pic_h = height;
       update_presentation();
    }
 
-   SDL_UpdateTexture(texture, NULL, data, (int)pitch);
+   if (remember_frame(data, width, height, pitch))
+      present_frame(last_frame, width, height);
 }
 
 static void audio_flush(void)
@@ -193,7 +266,7 @@ static void resize_window(void)
       return;
 
    SDL_SetWindowSize(window, (int)(pic_w * (unsigned)window_scale),
-         (int)((pic_h + MENU_BAR_HEIGHT) * (unsigned)window_scale));
+         (int)((view_height() + MENU_BAR_HEIGHT) * (unsigned)window_scale));
 }
 
 static void close_game(void)
@@ -337,6 +410,8 @@ static void fill_menu_state(struct menu_state *state)
    state->paused = paused;
    state->fullscreen = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
    state->muted = settings.muted;
+   state->aspect_4_3 = settings.aspect_4_3;
+   state->xbrz = settings.xbrz;
    state->state_slot = settings.state_slot;
    state->canvas_width = (int)pic_w;
    state->recent = &recent;
@@ -352,8 +427,8 @@ static void draw_centered(float y, const char *text)
 static void render(void)
 {
    struct menu_state state;
-   SDL_FRect dst = { 0, MENU_BAR_HEIGHT, (float)texture_w, (float)texture_h };
-   float mid = MENU_BAR_HEIGHT + (float)pic_h / 2;
+   SDL_FRect dst = { 0, MENU_BAR_HEIGHT, (float)pic_w, (float)view_height() };
+   float mid = MENU_BAR_HEIGHT + (float)view_height() / 2;
 
    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
    SDL_RenderClear(renderer);
@@ -372,7 +447,7 @@ static void render(void)
    }
 
    if (notice[0] && SDL_GetTicks() < notice_until_ms)
-      draw_centered(MENU_BAR_HEIGHT + (float)pic_h - 12, notice);
+      draw_centered(MENU_BAR_HEIGHT + (float)view_height() - 12, notice);
 
    if (remap_is_open())
    {
@@ -382,7 +457,7 @@ static void render(void)
       for (port = 0; port < PLAYER_COUNT; port++)
          pad_names[port] = input_pad_name(port);
 
-      remap_render(renderer, (int)pic_w, (int)(pic_h + MENU_BAR_HEIGHT), pad_names);
+      remap_render(renderer, (int)pic_w, (int)(view_height() + MENU_BAR_HEIGHT), pad_names);
    }
 
    fill_menu_state(&state);
@@ -521,6 +596,68 @@ static void toggle_mute(void)
    settings_save(&settings);
 }
 
+static void toggle_aspect(void)
+{
+   settings.aspect_4_3 = !settings.aspect_4_3;
+   update_presentation();
+   settings_save(&settings);
+}
+
+static void toggle_xbrz(void)
+{
+   settings.xbrz = !settings.xbrz;
+   if (texture && last_frame && game_running())
+      present_frame(last_frame, last_w, last_h);
+   settings_save(&settings);
+}
+
+static void notify(const char *text)
+{
+   SDL_strlcpy(notice, text, sizeof(notice));
+   notice_until_ms = SDL_GetTicks() + NOTICE_MS;
+}
+
+/* Saves the native core frame (without the menu or filter) as the first free screenshot_NNN.png. */
+static void take_screenshot(void)
+{
+   SDL_PathInfo info;
+   SDL_Surface *surface = NULL;
+   char name[32] = "";
+   int n;
+
+   if (!game_running() || !last_frame)
+   {
+      notify("Start a game to take a screenshot");
+      return;
+   }
+
+   for (n = 1; n <= MAX_SCREENSHOT; n++)
+   {
+      SDL_snprintf(name, sizeof(name), "screenshot_%03d.png", n);
+      if (!SDL_GetPathInfo(name, &info))
+         break;
+   }
+
+   if (n <= MAX_SCREENSHOT)
+      surface = SDL_CreateSurfaceFrom((int)last_w, (int)last_h, SDL_PIXELFORMAT_XRGB8888, last_frame,
+            (int)(last_w * 4));
+
+   if (surface && SDL_SavePNG(surface, name))
+   {
+      SDL_snprintf(notice, sizeof(notice), "Saved %s", name);
+      fprintf(stderr, "saved screenshot to %s\n", name);
+   }
+   else
+   {
+      notify("Screenshot failed");
+      fprintf(stderr, "screenshot failed: %s\n", SDL_GetError());
+   }
+
+   if (surface)
+      SDL_DestroySurface(surface);
+   notice_until_ms = SDL_GetTicks() + NOTICE_MS;
+}
+
 static void swap_gamepads(void)
 {
    const char *right;
@@ -612,6 +749,15 @@ static void handle_menu_action(const struct menu_action *action)
       case MENU_TOGGLE_MUTE:
          toggle_mute();
          break;
+      case MENU_TOGGLE_ASPECT:
+         toggle_aspect();
+         break;
+      case MENU_TOGGLE_XBRZ:
+         toggle_xbrz();
+         break;
+      case MENU_SCREENSHOT:
+         take_screenshot();
+         break;
       case MENU_REMAP_RIGHT_KEYS:
          menu_close();
          remap_open(settings.bindings, 0, REMAP_KEYBOARD);
@@ -669,6 +815,8 @@ static enum menu_command hotkey_command(const SDL_KeyboardEvent *key)
          return MENU_RESET;
       case SDL_SCANCODE_F11:
          return MENU_TOGGLE_FULLSCREEN;
+      case SDL_SCANCODE_F12:
+         return MENU_SCREENSHOT;
       default:
          return MENU_NONE;
    }
@@ -838,7 +986,7 @@ static int run(const struct options *opt)
 
    window = SDL_CreateWindow("Intelliemu",
          (int)(DEFAULT_WIDTH * (unsigned)opt->scale),
-         (int)((DEFAULT_HEIGHT + MENU_BAR_HEIGHT) * (unsigned)opt->scale),
+         (int)((view_height() + MENU_BAR_HEIGHT) * (unsigned)opt->scale),
          SDL_WINDOW_RESIZABLE);
    if (!window)
    {
@@ -877,6 +1025,8 @@ cleanup:
    if (window)
       SDL_DestroyWindow(window);
    recent_free(&recent);
+   SDL_free(last_frame);
+   SDL_free(xbrz_frame);
    SDL_Quit();
    return status_code;
 }
@@ -894,10 +1044,10 @@ static void usage(const char *prog)
          "settings: $XDG_CONFIG_HOME/Intelliemu/config.ini (default ~/.config/Intelliemu/config.ini)\n"
          "          -s and -x apply to this run only\n"
          "menu: File (open, close, recent ROMs, exit), Emulation (reset, pause, remap, swap gamepads, restore bindings),\n"
-         "      State (save, load, slot), Video (fullscreen), Audio (mute)\n"
+         "      State (save, load, slot), Video (fullscreen, 4:3 aspect, xBRZ filter, screenshot), Audio (mute)\n"
          "hotkeys: Ctrl+O open ROM, Ctrl+W close ROM, Ctrl+Q quit,\n"
          "         F1 save state, F5 load state, F9 next slot, F10 reset,\n"
-         "         F11 fullscreen, Esc close menu or quit\n"
+         "         F11 fullscreen, F12 screenshot, Esc close menu or quit\n"
          "keyboard defaults: Right = WASD disc and 0-9 keypad; Left = arrows disc and numpad keypad\n"
          "bindings: Emulation > Remap Right/Left keyboard or gamepad\n",
          prog, DEFAULT_CORE, MAX_SCALE);

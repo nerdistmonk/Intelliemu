@@ -17,6 +17,8 @@ struct settings
    char *system_dir;
    bool fullscreen;
    bool muted;
+   bool aspect_4_3;
+   bool xbrz;
    int state_slot;
    struct control_map bindings[PLAYER_COUNT];
    /* Gamepad saved for each port, restored when it reconnects. An empty string means none. */

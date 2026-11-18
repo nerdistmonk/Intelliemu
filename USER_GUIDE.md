@@ -51,7 +51,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | File | Open ROM..., Close ROM, recent ROMs, Exit |
 | Emulation | Reset, Pause / Resume, Remap Right keyboard..., Remap Left keyboard..., Remap Right gamepad..., Remap Left gamepad..., Swap Right and Left gamepads, Restore default bindings |
 | State | Save slot N, Load slot N, Next slot |
-| Video | Fullscreen |
+| Video | Fullscreen, 4:3 aspect, xBRZ filter, Screenshot (PNG) |
 | Audio | Mute |
 
 ## Hotkeys
@@ -65,6 +65,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | F9 | Next state slot (1-9) |
 | F10 | Reset |
 | F11 | Toggle fullscreen |
+| F12 | Save a PNG screenshot of the game (no menu or xBRZ filter) to the current folder as `screenshot_NNN.png` |
 | Esc | Close the menu or remap screen, or quit when neither is open |
 
 ## Controls
@@ -132,6 +133,8 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | `scale` | 1-16 | Initial window scale. `-x` does not change it. |
 | `system_dir` | folder path | Extra folder searched for BIOS files |
 | `fullscreen` | `1` or `0` | Changed with F11 or the Video menu, saved immediately, and restored at startup. |
+| `aspect_4_3` | `1` or `0` | `1` shows a 4:3 picture, `0` stretches to fill the window. Both scale to fit the window. Changed with the Video menu. Default `1`. |
+| `xbrz` | `1` or `0` | Smooths diagonal edges with a 2× xBRZ-style filter. Changed with the Video menu. Default `0`. |
 | `muted` | `1` or `0` | Changed with the Audio menu. Saved immediately. |
 | `right_gamepad`, `left_gamepad` | Gamepad identifier, or empty for none | Written by **Swap Right and Left gamepads**. Saved immediately. A gamepad is identified by its serial number when it has one, otherwise by its GUID and a `#n` suffix. Only swapped gamepads are remembered. |
 | `state_slot` | 1-9 | Changed with F9 or the State menu. Saved immediately. |
