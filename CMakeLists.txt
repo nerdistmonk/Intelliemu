@@ -115,5 +115,14 @@ if(INTELLIEMU_STANDALONE)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_CURRENT_SOURCE_DIR}/Assets/gamecontrollerdb.txt
             $<TARGET_FILE_DIR:intelliemu>/gamecontrollerdb.txt
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
+            $<TARGET_FILE_DIR:intelliemu>/LICENSE
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/README.md
+            $<TARGET_FILE_DIR:intelliemu>/README.md
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/USER_GUIDE.md
+            $<TARGET_FILE_DIR:intelliemu>/USER_GUIDE.md
     )
 endif()
