@@ -104,11 +104,22 @@ static unsigned view_height(void)
    return settings.aspect_4_3 ? pic_w * 3 / 4 : pic_h;
 }
 
+static bool fullscreen_on(void)
+{
+   return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+}
+
+/* The menu bar is hidden in fullscreen, so the picture starts at the top of the canvas. */
+static unsigned bar_height(void)
+{
+   return fullscreen_on() ? 0 : MENU_BAR_HEIGHT;
+}
+
 /* The menu bar is drawn above the picture, so the logical canvas is one bar taller. */
 static void update_presentation(void)
 {
    if (renderer)
-      SDL_SetRenderLogicalPresentation(renderer, (int)pic_w, (int)(view_height() + MENU_BAR_HEIGHT),
+      SDL_SetRenderLogicalPresentation(renderer, (int)pic_w, (int)(view_height() + bar_height()),
             settings.aspect_4_3 ? SDL_LOGICAL_PRESENTATION_LETTERBOX : SDL_LOGICAL_PRESENTATION_STRETCH);
 }
 
@@ -460,8 +471,9 @@ static void draw_centered(float y, const char *text)
 static void render(void)
 {
    struct menu_state state;
-   SDL_FRect dst = { 0, MENU_BAR_HEIGHT, (float)pic_w, (float)view_height() };
-   float mid = MENU_BAR_HEIGHT + (float)view_height() / 2;
+   unsigned bar = bar_height();
+   SDL_FRect dst = { 0, (float)bar, (float)pic_w, (float)view_height() };
+   float mid = (float)bar + (float)view_height() / 2;
 
    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
    SDL_RenderClear(renderer);
@@ -471,7 +483,7 @@ static void render(void)
    {
       SDL_RenderTexture(renderer, texture, NULL, &dst);
       if (paused)
-         SDL_RenderDebugText(renderer, 4, MENU_BAR_HEIGHT + 4, "PAUSED");
+         SDL_RenderDebugText(renderer, 4, (float)bar + 4, "PAUSED");
    }
    else
    {
@@ -480,7 +492,7 @@ static void render(void)
    }
 
    if (notice[0] && SDL_GetTicks() < notice_until_ms)
-      draw_centered(MENU_BAR_HEIGHT + (float)view_height() - 12, notice);
+      draw_centered((float)bar + (float)view_height() - 12, notice);
 
    if (remap_is_open())
    {
@@ -490,7 +502,13 @@ static void render(void)
       for (port = 0; port < PLAYER_COUNT; port++)
          pad_names[port] = input_pad_name(port);
 
-      remap_render(renderer, (int)pic_w, (int)(view_height() + MENU_BAR_HEIGHT), pad_names);
+      remap_render(renderer, (int)pic_w, (int)(view_height() + bar), (int)bar, pad_names);
+   }
+
+   if (!bar)
+   {
+      SDL_RenderPresent(renderer);
+      return;
    }
 
    fill_menu_state(&state);
@@ -619,6 +637,21 @@ static void toggle_fullscreen(void)
    settings.fullscreen = !(flags & SDL_WINDOW_FULLSCREEN);
    SDL_SetWindowFullscreen(window, settings.fullscreen);
    settings_save(&settings);
+}
+
+/* Runs each frame so fullscreen changes from any source (hotkey, menu, window manager) update the layout. */
+static void sync_fullscreen(void)
+{
+   static bool shown_fullscreen;
+   bool now = fullscreen_on();
+
+   if (now == shown_fullscreen)
+      return;
+
+   shown_fullscreen = now;
+   if (now)
+      menu_close();
+   update_presentation();
 }
 
 static void toggle_mute(void)
@@ -914,7 +947,7 @@ static void handle_pointer(float window_x, float window_y, bool click)
    struct menu_action action = { MENU_NONE, 0 };
    float x, y;
 
-   if (remap_is_open())
+   if (remap_is_open() || fullscreen_on())
       return;
 
    if (!SDL_RenderCoordinatesFromWindow(renderer, window_x, window_y, &x, &y))
@@ -1003,6 +1036,7 @@ static void main_loop(long max_frames)
       while (SDL_PollEvent(&event))
          handle_event(&event);
 
+      sync_fullscreen();
       update_input_block();
 
       if (game_running() && !paused && frame_due())

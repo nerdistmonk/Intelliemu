@@ -67,7 +67,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | F1 / F5 | Save / load state in the current slot |
 | F9 | Next state slot (1-9) |
 | F10 | Reset |
-| F11 | Toggle fullscreen |
+| F11 | Toggle fullscreen (the menu bar is hidden in fullscreen and any open menu closes; leave fullscreen with F11 to get it back) |
 | F12 | Save a PNG screenshot of the game (no menu or xBRZ filter) to the current folder as `screenshot_NNN.png` |
 | Esc | Close the menu or remap screen, or quit when neither is open |
 

@@ -241,12 +241,12 @@ bool remap_handle_pad(int input)
    return bind_pad(selected(), input);
 }
 
-void remap_render(SDL_Renderer *renderer, int width, int height, const char *const pad_names[PLAYER_COUNT])
+void remap_render(SDL_Renderer *renderer, int width, int height, int top_px, const char *const pad_names[PLAYER_COUNT])
 {
    const int col_w = width / COLUMN_COUNT;
-   const float top = (float)MENU_BAR_HEIGHT;
+   const float top = (float)top_px;
    const enum control sel = selected();
-   SDL_FRect panel = { 0, top, (float)width, (float)(height - MENU_BAR_HEIGHT) };
+   SDL_FRect panel = { 0, top, (float)width, (float)(height - top_px) };
    char text[TEXT_MAX];
    char name_one[TEXT_MAX];
    char name_two[TEXT_MAX];
