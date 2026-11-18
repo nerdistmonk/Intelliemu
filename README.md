@@ -2,6 +2,9 @@
 
 Intelliemu is a standalone Mattel Intellivision emulator. It runs a modified/updated freeintv libretro core in an SDL3 window, without RetroArch. GNU/Linux only.
 
+Version 1.0, Release Date: TBA (Can be built and used, just holding off on release until I finish some extra quality assurance)
+Has support for the ECS - Electronic Computer System module.
+
 ## Authors & Contributors
 
 freeintv was created by David Richardson.
