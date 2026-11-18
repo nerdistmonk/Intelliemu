@@ -88,6 +88,8 @@ Gamepad (SDL mapping, not yet checked with hardware):
 | Start / Back | Console pause / Swap controllers |
 | Left / right stick click | Keypad 0 / Keypad 5 |
 
+Controller layouts come from `gamecontrollerdb.txt`, which sits beside the `intelliemu` executable. If the file is missing, the emulator prints a warning and uses only SDL's built-in mappings.
+
 ## Save States
 
 F1 saves and F5 loads the current slot (1-9). States are written next to the ROM as `<ROM name without extension>.state<N>`. For example, `Game.int` saves to `Game.state1`.

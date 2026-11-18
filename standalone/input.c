@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 
 #include "intelliemu.h"
@@ -216,12 +217,29 @@ static void gamepad_removed(SDL_JoystickID id)
    }
 }
 
+static void load_gamepad_mappings(void)
+{
+   const char *base = SDL_GetBasePath();
+   char *path = NULL;
+
+   if (!base || SDL_asprintf(&path, "%sgamecontrollerdb.txt", base) < 0)
+      return;
+
+   if (SDL_AddGamepadMappingsFromFile(path) < 0)
+      fprintf(stderr, "gamepad mappings not loaded from %s: %s\n", path, SDL_GetError());
+
+   SDL_free(path);
+}
+
 void input_init(void)
 {
    int count = 0;
-   SDL_JoystickID *ids = SDL_GetGamepads(&count);
+   SDL_JoystickID *ids;
    int i;
 
+   load_gamepad_mappings();
+
+   ids = SDL_GetGamepads(&count);
    if (!ids)
       return;
 

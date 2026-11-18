@@ -105,4 +105,10 @@ if(INTELLIEMU_STANDALONE)
     target_compile_definitions(intelliemu PRIVATE
         "DEFAULT_CORE=\"$<TARGET_FILE:freeintv_libretro>\""
     )
+
+    add_custom_command(TARGET intelliemu POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/Assets/gamecontrollerdb.txt
+            $<TARGET_FILE_DIR:intelliemu>/gamecontrollerdb.txt
+    )
 endif()

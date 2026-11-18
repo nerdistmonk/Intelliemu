@@ -27,6 +27,7 @@ cmake --build release                             # build
 Output goes to `release/`:
 - `intelliemu`: the standalone emulator
 - `freeintv_libretro.so`: the libretro core, which `intelliemu` loads at runtime
+- `gamecontrollerdb.txt`: SDL gamepad mappings, copied from `Assets/` at build time and read beside `intelliemu`
 
 To build only the libretro core without SDL3, configure with `-DINTELLIEMU_STANDALONE=OFF`. If CMake cannot find SDL3, add `-DCMAKE_PREFIX_PATH=<prefix>` to the configure step.
 
