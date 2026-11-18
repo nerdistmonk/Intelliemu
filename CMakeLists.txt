@@ -101,6 +101,7 @@ if(INTELLIEMU_STANDALONE)
 
     target_include_directories(intelliemu PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/standalone
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${LIBRETRO_COMMON_DIR}/include
     )
 

@@ -157,6 +157,8 @@ int readMem(int adr) // Read (should handle hooks/alias)
 	}
     if (ecs_enabled && ecs_read(adr, &val))
         return val;
+    if ((adr == 0xFE || adr == 0xFF) && ecs_keyboard_active())
+        return ecs_keyboard_port_read(adr);
 
     val = Memory[adr];
 

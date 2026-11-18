@@ -106,6 +106,85 @@ int ecs_read(int adr, int *val)
 	return 0;
 }
 
+static int ecs_kbd_on = 0;
+static unsigned char ecs_kbd_cols[8];
+
+void ecs_keyboard_enable(int on)
+{
+	int c;
+	ecs_kbd_on = on ? 1 : 0;
+	for(c = 0; c < 8; c++)
+		ecs_kbd_cols[c] = 0;
+}
+
+int ecs_keyboard_active(void)
+{
+	return ecs_enabled && ecs_kbd_on;
+}
+
+void ecs_keyboard_set_matrix(const unsigned char cols[8])
+{
+	int c;
+	for(c = 0; c < 8; c++)
+		ecs_kbd_cols[c] = cols[c];
+}
+
+/*
+	The keyboard has no diodes and both ports have pull-ups. A line reads 0 only when a held key
+	ties it to a driven-low line and no driven-high line reaches it through another held key.
+	Bits 6 and 7 of $F8 set the direction of $FE (rows) and $FF (columns); 1 means output.
+*/
+int ecs_keyboard_port_read(int adr)
+{
+	int f8 = Memory[0xF8];
+	int rows_out = (f8 >> 6) & 1;
+	int cols_out = (f8 >> 7) & 1;
+	int fe = Memory[0xFE] & 0xFF;
+	int ff = Memory[0xFF] & 0xFF;
+	int r, c, low, high, val = 0xFF;
+
+	if(adr == 0xFE)
+	{
+		if(rows_out)
+			return fe;
+		for(r = 0; r < 8; r++)
+		{
+			low = high = 0;
+			for(c = 0; c < 8 && cols_out; c++)
+			{
+				if(!(ecs_kbd_cols[c] & (1 << r)))
+					continue;
+				if((ff >> c) & 1)
+					high = 1;
+				else
+					low = 1;
+			}
+			if(low && !high)
+				val &= ~(1 << r);
+		}
+		return val;
+	}
+
+	if(cols_out)
+		return ff;
+	for(c = 0; c < 8; c++)
+	{
+		low = high = 0;
+		for(r = 0; r < 8 && rows_out; r++)
+		{
+			if(!(ecs_kbd_cols[c] & (1 << r)))
+				continue;
+			if((fe >> r) & 1)
+				high = 1;
+			else
+				low = 1;
+		}
+		if(low && !high)
+			val &= ~(1 << c);
+	}
+	return val;
+}
+
 int ecs_write(int adr, int val)
 {
 	int w;

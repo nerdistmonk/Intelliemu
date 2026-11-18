@@ -36,6 +36,7 @@
 #include "psg.h"
 #include "ivoice.h"
 #include "ecs.h"
+#include "ecs_keyboard_device.h"
 #include "controller.h"
 #include "osd.h"
 
@@ -988,12 +989,29 @@ static void Keyboard(bool down, unsigned keycode,
 	intelliemu_keypad_event(0, down, character);
 }
 
+static void update_ecs_keyboard(void)
+{
+	unsigned char cols[8];
+	int c, r;
+
+	ecs_keyboard_enable(InputState(0, ECS_KEYBOARD_DEVICE, 0, ECS_KEYBOARD_ENABLE_ID) ? 1 : 0);
+	for (c = 0; c < 8; c++)
+	{
+		cols[c] = 0;
+		for (r = 0; r < 7; r++)
+			if (InputState(0, ECS_KEYBOARD_DEVICE, 0, ECS_KEYBOARD_KEY(c, r)))
+				cols[c] |= (unsigned char)(1u << r);
+	}
+	ecs_keyboard_set_matrix(cols);
+}
+
 static void update_input(void)
 {
 	int i, j;
 	int joypad_bits[2];
 
 	InputPoll();
+	update_ecs_keyboard();
 
 	for (i = 0; i < 20; i++) // Copy previous state 
 	{

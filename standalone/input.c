@@ -1,6 +1,8 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "ecs_keyboard_device.h"
 #include "intelliemu.h"
 
 #define KEYPAD_MAX 32
@@ -614,11 +616,114 @@ int input_pad_press_from_event(const SDL_Event *event)
    return PAD_UNBOUND;
 }
 
+/* ECS keyboard matrix: [row][col] for the unshifted and shifted glyph. Rows 0-5 hold the keys. Row 6 col 7 is ECS Shift. */
+static const char ecs_glyph_plain[6][8] = {
+   {0,   '.', ';', 'p', 0,   '0', '\r', 0},
+   {',', 'm', 'k', 'i', '9', '8', 'o',  'l'},
+   {'n', 'b', 'h', 'y', '7', '6', 'u',  'j'},
+   {'v', 'c', 'f', 'r', '5', '4', 't',  'g'},
+   {'x', 'z', 's', 'w', '3', '2', 'e',  'd'},
+   {' ', 0,   0,   'q', '1', 0,   0,    'a'},
+};
+
+static const char ecs_glyph_shift[6][8] = {
+   {'%', '>', ':', 'P', 0,   ')', '\r', 0},
+   {'<', 'M', 'K', 'I', '(', '*', 'O',  'L'},
+   {'N', 'B', 'H', 'Y', '/', '-', 'U',  'J'},
+   {'V', 'C', 'F', 'R', '+', '$', 'T',  'G'},
+   {'X', 'Z', 'S', 'W', '#', '"', 'E',  'D'},
+   {' ', '?', '^', 'Q', '=', '\'', 0,   'A'},
+};
+
+/* Keys without a printable glyph on the ECS keyboard. Returns 1 and sets row/col when the key is one. */
+static int ecs_special_position(SDL_Scancode sc, int *row, int *col)
+{
+   switch (sc)
+   {
+      case SDL_SCANCODE_BACKSPACE: *row = 0; *col = 4; return 1;
+      case SDL_SCANCODE_LEFT:   *row = 0; *col = 0; return 1;
+      case SDL_SCANCODE_UP:     *row = 5; *col = 2; return 1;
+      case SDL_SCANCODE_DOWN:   *row = 5; *col = 1; return 1;
+      case SDL_SCANCODE_RIGHT:  *row = 5; *col = 5; return 1;
+      case SDL_SCANCODE_LCTRL:
+      case SDL_SCANCODE_RCTRL:  *row = 5; *col = 6; return 1;
+      default:                  return 0;
+   }
+}
+
+/* Finds the ECS key that produces ch. Plain glyphs need no ECS Shift, shifted glyphs do. */
+static int ecs_find_glyph(int ch, int *row, int *col, int *shift)
+{
+   int r, c;
+
+   for (r = 0; r < 6; r++)
+      for (c = 0; c < 8; c++)
+         if (ch && ecs_glyph_plain[r][c] == ch)
+         {
+            *row = r; *col = c; *shift = 0;
+            return 1;
+         }
+
+   for (r = 0; r < 6; r++)
+      for (c = 0; c < 8; c++)
+         if (ch && ecs_glyph_shift[r][c] == ch)
+         {
+            *row = r; *col = c; *shift = 1;
+            return 1;
+         }
+
+   return 0;
+}
+
+/* Matrix state sent to the core on ECS_KEYBOARD_DEVICE. Bit row of column col is set while that key is held. */
+static unsigned char ecs_kbd_cols[8];
+
+/* Maps the held host keys onto the ECS matrix by the character each one produces. Off or blocked leaves the matrix empty. */
+static void ecs_keyboard_refresh(const bool *keys)
+{
+   bool host_shift = keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT];
+   int sc, row, col, shift;
+
+   memset(ecs_kbd_cols, 0, sizeof(ecs_kbd_cols));
+   if (!ecs_keyboard || blocked)
+      return;
+
+   for (sc = 0; sc < SDL_SCANCODE_COUNT; sc++)
+   {
+      int ch;
+
+      if (!keys[sc])
+         continue;
+
+      if (ecs_special_position((SDL_Scancode)sc, &row, &col))
+      {
+         ecs_kbd_cols[col] |= (unsigned char)(1u << row);
+         continue;
+      }
+
+      ch = SDL_GetKeyFromScancode((SDL_Scancode)sc, host_shift ? SDL_KMOD_SHIFT : SDL_KMOD_NONE, false);
+      if (host_shift && ch < 128)
+         ch = toupper(ch);
+
+      if (ch < 128 && ecs_find_glyph(ch, &row, &col, &shift))
+      {
+         ecs_kbd_cols[col] |= (unsigned char)(1u << row);
+         if (shift)
+            ecs_kbd_cols[7] |= (unsigned char)(1u << 6);
+      }
+   }
+
+   if (host_shift)
+      ecs_kbd_cols[7] |= (unsigned char)(1u << 6);
+}
+
 void frontend_input_poll(void)
 {
    const bool *keys = SDL_GetKeyboardState(NULL);
    int port;
    int control;
+
+   ecs_keyboard_refresh(keys);
 
    if (blocked)
    {
@@ -655,6 +760,17 @@ int16_t frontend_input_state(unsigned port, unsigned device, unsigned index, uns
 {
    if (port >= PLAYER_COUNT)
       return 0;
+
+   if (device == ECS_KEYBOARD_DEVICE)
+   {
+      unsigned col = id / 8, row = id % 8;
+
+      if (id == ECS_KEYBOARD_ENABLE_ID)
+         return ecs_keyboard ? 1 : 0;
+      if (col < 8 && row < 7)
+         return (ecs_kbd_cols[col] >> row) & 1u;
+      return 0;
+   }
 
    if (device == RETRO_DEVICE_JOYPAD)
       return (id < 16 && ((snapshot.buttons[port] >> id) & 1u)) ? 1 : 0;
