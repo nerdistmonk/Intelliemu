@@ -16,13 +16,21 @@ The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), an
 <div style="margin: 18px 0;"><img width="1372" height="770" alt="FreeIntv Screenshot 2" src="screenshots/Screenshot 2025-11-24 194901.png" style="border:2px solid #FFD700; border-radius:6px;" /></div>
 <div style="margin: 18px 0;"><img width="1365" height="765" alt="FreeIntv Screenshot 3" src="screenshots/Screenshot 2025-11-24 194935.png" style="border:2px solid #FFD700; border-radius:6px;" /></div>
 
+## Building
+
+Linux only, using CMake 3.16+ and GCC. The standalone frontend needs SDL3 development files (tested with SDL 3.4.20; if your distribution does not package SDL3, build it from source).
+
+```sh
+cmake -S . -B build                 # configure
+cmake --build build                 # builds build/freeintv_libretro.so and build/standalone/intelliemu
+```
+
+To build only the libretro core without SDL3, configure with `-DINTELLIEMU_STANDALONE=OFF`. If CMake cannot find SDL3, add `-DCMAKE_PREFIX_PATH=<prefix>` to the configure step.
+
 ## Installation
 
 **Step 1: Install freeintv Core**
-- Place the compiled core file for your platform into RetroArch's `cores/` directory:
-  - Windows: `freeintv_libretro.dll`
-  - Linux: `freeintv_libretro.so`
-  - macOS: `freeintv_libretro.dylib`
+- Place the built `freeintv_libretro.so` (see [Building](#building)) into RetroArch's `cores/` directory
 
 **Step 2: Install the Core Info File**
 - Copy `freeintv_libretro.info` to RetroArch's `info/` directory
@@ -38,18 +46,15 @@ The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), an
 
 ## Standalone Emulator (SDL3)
 
-`standalone/` contains an SDL3 frontend that loads the freeintv core directly, without RetroArch. It requires SDL3 development files (tested with SDL 3.4.20; if your distribution does not package SDL3, build it from source).
+`standalone/` contains an SDL3 frontend that loads the freeintv core directly, without RetroArch.
+
+After building (see [Building](#building)):
 
 ```sh
-make                                     # build freeintv_libretro.so
-cmake -S standalone -B build/standalone  # configure the frontend
-cmake --build build/standalone           # build build/standalone/intelliemu
 ./build/standalone/intelliemu -s system Game.int
 ```
 
-If CMake cannot find SDL3, add `-DSDL3_DIR=<prefix>/lib/cmake/SDL3` to the configure step.
-
-Run from the repository root so the default core path (`./freeintv_libretro.so`) resolves. Use `-c PATH` to load a different core, and `-s DIR` for the folder containing `exec.bin` and `grom.bin`. Run `intelliemu --help` for all options.
+The frontend loads the core from the same build tree by default. Use `-c PATH` to load a different core, and `-s DIR` for the folder containing `exec.bin` and `grom.bin`. Run `intelliemu --help` for all options.
 
 | Key | Action |
 | --- | --- |

@@ -23,3 +23,9 @@ target_include_directories(intelliemu PRIVATE
 
 target_compile_options(intelliemu PRIVATE -Wall -Wextra)
 target_link_libraries(intelliemu PRIVATE SDL3::SDL3)
+
+if(TARGET freeintv_libretro)
+    target_compile_definitions(intelliemu PRIVATE
+        "DEFAULT_CORE=\"$<TARGET_FILE:freeintv_libretro>\""
+    )
+endif()

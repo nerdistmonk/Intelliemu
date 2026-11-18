@@ -9,10 +9,12 @@
 #include "menu.h"
 #include "recent.h"
 
+#ifndef DEFAULT_CORE
 #ifdef _WIN32
 #define DEFAULT_CORE "./freeintv_libretro.dll"
 #else
 #define DEFAULT_CORE "./freeintv_libretro.so"
+#endif
 #endif
 
 #define DEFAULT_WIDTH 352

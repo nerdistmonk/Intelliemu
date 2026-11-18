@@ -43,16 +43,13 @@ The new touchscreen feature uses a horizontal layout:
 
 ### Building
 ```bash
-# Linux/Mac (standard libretro build)
-make platform=unix
+# Linux only (CMake + GCC); also builds the SDL3 standalone frontend when SDL3 is found
+cmake -S . -B build
+cmake --build build
 
-# Windows (MinGW)
-make platform=win
-
-# Android NDK
-ndk-build -C jni/
-
-# View all platform targets in Makefile
+# Core only, no SDL3 needed
+cmake -S . -B build -DINTELLIEMU_STANDALONE=OFF
+cmake --build build
 ```
 
 ### Testing Workflow
@@ -111,22 +108,19 @@ Combine with bitwise OR: `state |= K_5 | D_N` for "keypad 5 + North direction"
 | Fix emulation bugs | `cp1610.c` (CPU), `stic.c` (graphics), `psg.c` (audio) |
 | Implement UI features | `libretro.c` (rendering, touch handling) |
 | Modify save states | `libretro.c` (serialization structs) |
-| Change build system | `Makefile`, `Makefile.common` |
-| Add platform support | `Makefile` (platform detection), `jni/` (Android) |
+| Change build system | `CMakeLists.txt`, `standalone/CMakeLists.txt` |
 
 ## Known Gotchas & Limitations
 
 1. **ECS (Entertainment Computer System)**: Not currently supported; contributions welcome
 2. **Button images**: Utility button graphics loading is partially implemented (placeholders); only "Swap Screen" button is fully functional
 3. **Audio**: PSG audio works; Intellivoice support was added but needs testing with specific games
-4. **Android NDK**: Uses Application.mk and Android.mk for build; requires NDK toolchain setup
-5. **Serialization version**: Change 0x4f544702 if save state struct changes, or old saves will fail to load
+4. **Serialization version**: Change 0x4f544702 if save state struct changes, or old saves will fail to load
 
 ## Build & Deploy
 
 - **Libretro repository**: Changes should track with upstream libretro/FreeIntv
-- **Core release**: Plugin compiled to `FreeIntv_libretro.{so,dll,dylib}` depending on platform
-- **Android APK**: Built via RetroArch Android app; FreeIntv core loads as plugin
+- **Core release**: Plugin built as `build/freeintv_libretro.so` (Linux only)
 
 ---
 

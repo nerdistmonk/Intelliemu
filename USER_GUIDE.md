@@ -18,7 +18,7 @@ The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), an
 
 ## Requirements
 - RetroArch (latest recommended)
-- freeintv core (`freeintv_libretro.so`, `.dll`, or `.dylib`)
+- freeintv core (`freeintv_libretro.so`)
 - Intellivision BIOS files: `exec.bin`, `grom.bin` (place in RetroArch `system` folder)
 - Game ROMs (Intellivision format)
 
@@ -27,10 +27,7 @@ The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), an
 ## Installation
 
 **Step 1: Install freeintv Core**
-- Place the compiled core file for your platform into RetroArch's `cores/` directory:
-  - Windows: `freeintv_libretro.dll`
-  - Linux: `freeintv_libretro.so`
-  - macOS: `freeintv_libretro.dylib`
+- Place the built `freeintv_libretro.so` into RetroArch's `cores/` directory
 
 **Step 2: Install the Core Info File**
 - Copy `freeintv_libretro.info` to RetroArch's `info/` directory
