@@ -78,7 +78,7 @@ Keyboard, player 1:
 | Backspace | Swap left and right controllers (Select) |
 | 0-9, `[`, `]` | Keypad |
 
-Gamepad (SDL mapping, not yet checked with hardware):
+Gamepad (SDL mapping, tested with an SNES controller):
 
 | Gamepad | Intellivision |
 | --- | --- |
@@ -104,7 +104,7 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | --- | --- | --- |
 | `scale` | 1-16 | Initial window scale. `-x` does not change it. |
 | `system_dir` | folder path | Extra folder searched for BIOS files |
-| `fullscreen` | `1` or `0` | Changed with F11 or the Video menu. Saved immediately. |
+| `fullscreen` | `1` or `0` | Changed with F11 or the Video menu, saved immediately, and restored at startup. |
 | `muted` | `1` or `0` | Changed with the Audio menu. Saved immediately. |
 | `state_slot` | 1-9 | Changed with F9 or the State menu. Saved immediately. |
 
@@ -118,6 +118,4 @@ The emulator rewrites `config.ini` whenever it saves a setting, so hand-added ke
 - **ECS is not supported.**
 - **Melody Blaster and Scooby Doo** report bad opcodes and do not run yet.
 - **Analog sticks, triggers, and keypad input from the analog stick** are not mapped in the standalone emulator.
-- **Gamepad mapping** has not been checked with hardware.
-- **Open ROM** uses the desktop's file dialog, which has not been tested on every desktop environment.
 
