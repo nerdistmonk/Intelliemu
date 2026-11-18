@@ -11,9 +11,7 @@ The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), an
 
 **Onscreen Overlay Enhancement**: Onscreen interactive keypad overlays with touchscreen (Android) and mouse (Windows/Linux) support (November 2025) by Jason Carr
 
-<div style="margin: 18px 0;"><img width="1291" height="727" alt="FreeIntv Screenshot 1" src="screenshots/Screenshot 2025-11-24 194829.png" style="border:2px solid #FFD700; border-radius:6px;" /></div>
-<div style="margin: 18px 0;"><img width="1372" height="770" alt="FreeIntv Screenshot 2" src="screenshots/Screenshot 2025-11-24 194901.png" style="border:2px solid #FFD700; border-radius:6px;" /></div>
-<div style="margin: 18px 0;"><img width="1365" height="765" alt="FreeIntv Screenshot 3" src="screenshots/Screenshot 2025-11-24 194935.png" style="border:2px solid #FFD700; border-radius:6px;" /></div>
+<div style="margin: 18px 0;"><img width="1056" height="708" alt="Intelliemu running Astrosmash" src="screenshots/astrosmash.png" style="border:2px solid #FFD700; border-radius:6px;" /></div>
 
 ## Building
 
