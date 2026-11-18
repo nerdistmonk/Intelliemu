@@ -55,7 +55,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | Emulation | Reset, Pause / Resume, Remap Right keyboard..., Remap Left keyboard..., Remap Right gamepad..., Remap Left gamepad..., Swap Right and Left gamepads, Restore default bindings |
 | State | Save slot N, Load slot N, Next slot |
 | Video | Fullscreen, 4:3 aspect, xBRZ filter, Screenshot (PNG) |
-| Audio | Mute |
+| Audio | Mute, sample rate (11025, 22050, 44100, 48000 Hz), Volume 100% or 50% |
 
 ## Hotkeys
 
@@ -139,6 +139,8 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | `aspect_4_3` | `1` or `0` | `1` shows a 4:3 picture, `0` stretches to fill the window. Both scale to fit the window. Changed with the Video menu. Default `1`. |
 | `xbrz` | `1` or `0` | Smooths diagonal edges with a 2× xBRZ-style filter. Changed with the Video menu. Default `0`. |
 | `muted` | `1` or `0` | Changed with the Audio menu. Saved immediately. |
+| `sample_rate` | `11025`, `22050`, `44100` or `48000` | Audio output rate. Changed with the Audio menu. Default `44100`. The core's 44100 Hz audio is resampled to this rate. |
+| `volume` | 0-100 | Audio volume as a percentage. Changed with the Audio menu (100 or 50). Default `100`. |
 | `right_gamepad`, `left_gamepad` | Gamepad identifier, or empty for none | Written by **Swap Right and Left gamepads**. Saved immediately. A gamepad is identified by its serial number when it has one, otherwise by its GUID and a `#n` suffix. Only swapped gamepads are remembered. |
 | `state_slot` | 1-9 | Changed with F9 or the State menu. Saved immediately. |
 | `right_key_<control>`, `left_key_<control>` | SDL key name, such as `W`, `Up`, or `Keypad 1` | One line per keyboard control for each port, for example `right_key_disc_up`. An empty value leaves the control unbound. Unknown names and reserved keys keep the current binding. If two controls of one port share a key on load, the later one is unbound. Written by the remap screens. Keys from older versions (`p1_*`, `p2_*`, `p1_left`, `key_*`) are ignored, so bindings start from the defaults. |

@@ -11,6 +11,8 @@
 #define SETTINGS_FILE "config.ini"
 #define SETTINGS_MAX_SIZE (64 * 1024)
 
+const int sample_rates[SAMPLE_RATE_COUNT] = { 11025, 22050, 44100, 48000 };
+
 char *config_dir(void)
 {
    const char *xdg = getenv("XDG_CONFIG_HOME");
@@ -132,6 +134,8 @@ static void settings_defaults(struct settings *s)
    s->muted = false;
    s->aspect_4_3 = true;
    s->xbrz = false;
+   s->sample_rate = DEFAULT_SAMPLE_RATE;
+   s->volume = DEFAULT_VOLUME;
    s->state_slot = 1;
    controls_reset(s->bindings);
    for (int p = 0; p < PLAYER_COUNT; p++)
@@ -261,6 +265,19 @@ static void apply_setting(struct settings *s, const char *key, const char *value
       if (*end == '\0' && number >= 1 && number <= MAX_SCALE)
          s->scale = number;
    }
+   else if (!strcmp(key, "sample_rate"))
+   {
+      number = strtol(value, &end, 10);
+      for (int i = 0; i < SAMPLE_RATE_COUNT; i++)
+         if (*end == '\0' && number == sample_rates[i])
+            s->sample_rate = (int)number;
+   }
+   else if (!strcmp(key, "volume"))
+   {
+      number = strtol(value, &end, 10);
+      if (*end == '\0' && number >= 0 && number <= 100)
+         s->volume = (int)number;
+   }
    else if (!strcmp(key, "state_slot"))
    {
       number = strtol(value, &end, 10);
@@ -388,6 +405,10 @@ bool settings_save(const struct settings *s)
          "muted = %d\n"
          "aspect_4_3 = %d\n"
          "xbrz = %d\n"
+         "# sample_rate: audio output rate, 11025, 22050, 44100 or 48000; also changed from the Audio menu\n"
+         "sample_rate = %d\n"
+         "# volume: audio volume, 0-100; also changed from the Audio menu\n"
+         "volume = %d\n"
          "# state_slot: save state slot, 1-%d; also changed with F9 or the State menu\n"
          "state_slot = %d\n"
          "# right_gamepad and left_gamepad: gamepad saved for each port; empty means none\n"
@@ -396,6 +417,7 @@ bool settings_save(const struct settings *s)
          "%s",
          MAX_SCALE, s->scale, s->system_dir ? s->system_dir : ".",
          s->fullscreen ? 1 : 0, s->muted ? 1 : 0, s->aspect_4_3 ? 1 : 0, s->xbrz ? 1 : 0,
+         s->sample_rate, s->volume,
          MAX_STATE_SLOT, s->state_slot, bindings_text) < 0)
       return false;
 

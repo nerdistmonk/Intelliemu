@@ -9,6 +9,12 @@
 #define DEFAULT_SCALE 3
 #define MAX_SCALE 16
 #define MAX_STATE_SLOT 9
+#define DEFAULT_SAMPLE_RATE 44100
+#define DEFAULT_VOLUME 100
+#define SAMPLE_RATE_COUNT 4
+
+/* Output rates offered in the Audio menu and accepted in config.ini. */
+extern const int sample_rates[SAMPLE_RATE_COUNT];
 
 /* Settings stored in ~/.config/Intelliemu/config.ini ($XDG_CONFIG_HOME is honored). */
 struct settings
@@ -19,6 +25,8 @@ struct settings
    bool muted;
    bool aspect_4_3;
    bool xbrz;
+   int sample_rate;
+   int volume;
    int state_slot;
    struct control_map bindings[PLAYER_COUNT];
    /* Gamepad saved for each port, restored when it reconnects. An empty string means none. */

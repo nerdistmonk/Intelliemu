@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include "config.h"
 #include "menu.h"
 
 #define TITLE_COUNT 5
@@ -153,6 +154,18 @@ static int build_items(int title, const struct menu_state *state, struct menu_it
 
       case 4:
          add_item(items, &n, state->muted ? "[x] Mute" : "[ ] Mute", NULL, MENU_TOGGLE_MUTE, 0, true);
+         add_separator(items, &n);
+         for (i = 0; i < SAMPLE_RATE_COUNT; i++)
+         {
+            SDL_snprintf(label, sizeof(label), "%s %d Hz", state->sample_rate == sample_rates[i] ? "[x]" : "[ ]",
+                  sample_rates[i]);
+            add_item(items, &n, label, NULL, MENU_SET_SAMPLE_RATE, sample_rates[i], true);
+         }
+         add_separator(items, &n);
+         SDL_snprintf(label, sizeof(label), "%s Volume 100%%", state->volume == 100 ? "[x]" : "[ ]");
+         add_item(items, &n, label, NULL, MENU_SET_VOLUME, 100, true);
+         SDL_snprintf(label, sizeof(label), "%s Volume 50%%", state->volume == 50 ? "[x]" : "[ ]");
+         add_item(items, &n, label, NULL, MENU_SET_VOLUME, 50, true);
          break;
 
       default:

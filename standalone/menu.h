@@ -26,6 +26,8 @@ enum menu_command
    MENU_TOGGLE_XBRZ,
    MENU_SCREENSHOT,
    MENU_TOGGLE_MUTE,
+   MENU_SET_SAMPLE_RATE,
+   MENU_SET_VOLUME,
    MENU_REMAP_RIGHT_KEYS,
    MENU_REMAP_LEFT_KEYS,
    MENU_REMAP_RIGHT_PAD,
@@ -40,6 +42,8 @@ struct menu_state
    bool paused;
    bool fullscreen;
    bool muted;
+   int sample_rate;
+   int volume;
    bool aspect_4_3;
    bool xbrz;
    int state_slot;

@@ -57,6 +57,8 @@ static unsigned texture_w, texture_h;
 static unsigned pic_w = DEFAULT_WIDTH, pic_h = DEFAULT_HEIGHT;
 static bool audio_subsystem;
 static SDL_AudioStream *audio;
+static SDL_AudioDeviceID audio_device;
+static int audio_core_rate;
 static int audio_lead_bytes;
 static uint64_t frame_ns;
 static uint64_t next_frame_ns;
@@ -235,22 +237,45 @@ size_t frontend_audio_sample_batch(const int16_t *data, size_t frames)
    return frames;
 }
 
-static void audio_open(int sample_rate)
+static float audio_gain(void)
 {
-   SDL_AudioSpec spec = { .format = SDL_AUDIO_S16, .channels = 2, .freq = sample_rate };
+   return settings.muted ? 0.0f : settings.volume / 100.0f;
+}
 
+static void audio_close(void);
+
+/* The core always produces audio_core_rate; SDL resamples it to the device rate. */
+static void audio_open(int core_rate)
+{
+   SDL_AudioSpec src = { .format = SDL_AUDIO_S16, .channels = 2, .freq = core_rate };
+   SDL_AudioSpec dst = { .format = SDL_AUDIO_S16, .channels = 2, .freq = settings.sample_rate };
+
+   audio_core_rate = core_rate;
    if (!audio_subsystem)
       return;
 
-   audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL);
-   if (!audio)
+   audio_device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &dst);
+   if (audio_device)
+      audio = SDL_CreateAudioStream(&src, NULL);
+   if (!audio || !SDL_BindAudioStream(audio_device, audio))
    {
       fprintf(stderr, "audio disabled, pacing by timer: %s\n", SDL_GetError());
+      audio_close();
       return;
    }
 
-   SDL_SetAudioStreamGain(audio, settings.muted ? 0.0f : 1.0f);
-   SDL_ResumeAudioStreamDevice(audio);
+   SDL_SetAudioStreamGain(audio, audio_gain());
+   SDL_ResumeAudioDevice(audio_device);
+}
+
+static void audio_close(void)
+{
+   if (audio)
+      SDL_DestroyAudioStream(audio);
+   if (audio_device)
+      SDL_CloseAudioDevice(audio_device);
+   audio = NULL;
+   audio_device = 0;
 }
 
 static void set_title(void)
@@ -283,11 +308,7 @@ static void close_game(void)
    input_release_all();
    core_close(&core);
 
-   if (audio)
-   {
-      SDL_DestroyAudioStream(audio);
-      audio = NULL;
-   }
+   audio_close();
    stage_frames = 0;
 
    if (texture)
@@ -419,6 +440,8 @@ static void fill_menu_state(struct menu_state *state)
    state->paused = paused;
    state->fullscreen = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
    state->muted = settings.muted;
+   state->sample_rate = settings.sample_rate;
+   state->volume = settings.volume;
    state->aspect_4_3 = settings.aspect_4_3;
    state->xbrz = xbrz_on();
    state->state_slot = settings.state_slot;
@@ -601,7 +624,26 @@ static void toggle_mute(void)
 {
    settings.muted = !settings.muted;
    if (audio)
-      SDL_SetAudioStreamGain(audio, settings.muted ? 0.0f : 1.0f);
+      SDL_SetAudioStreamGain(audio, audio_gain());
+   settings_save(&settings);
+}
+
+static void set_volume(int volume)
+{
+   settings.volume = volume;
+   if (audio)
+      SDL_SetAudioStreamGain(audio, audio_gain());
+   settings_save(&settings);
+}
+
+static void set_sample_rate(int rate)
+{
+   settings.sample_rate = rate;
+   if (audio)
+   {
+      audio_close();
+      audio_open(audio_core_rate);
+   }
    settings_save(&settings);
 }
 
@@ -758,6 +800,12 @@ static void handle_menu_action(const struct menu_action *action)
          break;
       case MENU_TOGGLE_MUTE:
          toggle_mute();
+         break;
+      case MENU_SET_SAMPLE_RATE:
+         set_sample_rate(action->arg);
+         break;
+      case MENU_SET_VOLUME:
+         set_volume(action->arg);
          break;
       case MENU_TOGGLE_ASPECT:
          toggle_aspect();
