@@ -53,6 +53,7 @@ static const char *system_dir;
 static struct bios_files bios;
 static char *rom_file;
 static long window_scale;
+static bool run_forced_fullscreen;
 static int xbrz_override = -1;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
@@ -730,7 +731,8 @@ static void toggle_fullscreen(void)
    settings_save(&settings);
 }
 
-/* Runs each frame so fullscreen changes from any source (hotkey, menu, window manager) update the layout. */
+/* Runs each frame so fullscreen changes from any source (hotkey, menu, window manager) update the layout.
+ * Window-manager changes are saved as the new default. A forced -f start is not saved. */
 static void sync_fullscreen(void)
 {
    static bool shown_fullscreen;
@@ -742,6 +744,13 @@ static void sync_fullscreen(void)
    shown_fullscreen = now;
    if (now)
       menu_close();
+   else
+      run_forced_fullscreen = false;
+   if (now != settings.fullscreen && !(run_forced_fullscreen && now))
+   {
+      settings.fullscreen = now;
+      settings_save(&settings);
+   }
    update_presentation();
 }
 
@@ -1194,6 +1203,7 @@ static int run(const struct options *opt)
    core_path = opt->core_path;
    system_dir = opt->system_dir;
    window_scale = opt->scale;
+   run_forced_fullscreen = opt->fullscreen;
    xbrz_override = opt->xbrz;
 
    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
