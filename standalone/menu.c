@@ -125,8 +125,11 @@ static int build_items(int title, const struct menu_state *state, struct menu_it
          add_item(items, &n, state->paused ? "Resume" : "Pause", NULL, MENU_TOGGLE_PAUSE, 0,
                state->game_running);
          add_separator(items, &n);
-         add_item(items, &n, "Remap Right keyboard...", NULL, MENU_REMAP_RIGHT_KEYS, 0, true);
-         add_item(items, &n, "Remap Left keyboard...", NULL, MENU_REMAP_LEFT_KEYS, 0, true);
+         add_item(items, &n, state->ecs_keyboard ? "[x] ECS keyboard" : "[ ] ECS keyboard", NULL,
+               MENU_TOGGLE_ECS_KEYBOARD, 0, true);
+         add_separator(items, &n);
+         add_item(items, &n, "Remap Right keyboard...", NULL, MENU_REMAP_RIGHT_KEYS, 0, !state->ecs_keyboard);
+         add_item(items, &n, "Remap Left keyboard...", NULL, MENU_REMAP_LEFT_KEYS, 0, !state->ecs_keyboard);
          add_item(items, &n, "Remap Right gamepad...", NULL, MENU_REMAP_RIGHT_PAD, 0, true);
          add_item(items, &n, "Remap Left gamepad...", NULL, MENU_REMAP_LEFT_PAD, 0, true);
          add_item(items, &n, "Swap Right and Left gamepads", NULL, MENU_SWAP_GAMEPADS, 0, true);

@@ -52,7 +52,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | Menu | Items |
 | --- | --- |
 | File | Open ROM..., Close ROM, recent ROMs, Exit |
-| Emulation | Reset, Pause / Resume, Remap Right keyboard..., Remap Left keyboard..., Remap Right gamepad..., Remap Left gamepad..., Swap Right and Left gamepads, Restore default bindings |
+| Emulation | Reset, Pause / Resume, ECS keyboard, Remap Right keyboard..., Remap Left keyboard..., Remap Right gamepad..., Remap Left gamepad..., Swap Right and Left gamepads, Restore default bindings |
 | State | Save slot N, Load slot N, Next slot |
 | Video | Fullscreen, 4:3 aspect, xBRZ filter, Screenshot (PNG) |
 | Audio | Mute, sample rate (11025, 22050, 44100, 48000 Hz), Volume 100% or 50% |
@@ -111,6 +111,8 @@ Each **Remap** entry in the Emulation menu edits one port's bindings for one dev
 
 **Emulation > Restore default bindings** resets both ports' keyboard bindings to the defaults and clears every gamepad binding.
 
+**Emulation > ECS keyboard** (off by default) turns the keyboard into the ECS keyboard. While it is on, the keyboard no longer drives Intellivision controls, including the disc and keypad keys, and the two keyboard remap entries are disabled. Gamepads still work, and the emulator hotkeys (F1 to F12, Esc, Ctrl+Q) still work. The setting is saved as `ecs_keyboard` in `config.ini`.
+
 Gamepad bindings start empty. Bind any gamepad button or trigger to any control with **Remap Right gamepad...** or **Remap Left gamepad...**. A connected gamepad goes to the first free port, Right before Left. Gamepads are told apart by serial number when they report one. Identical gamepads without a serial number are told apart by connection order.
 
 When a gamepad connects, the window shows a notice for a few seconds naming its port and controller, such as `Right gamepad: Xbox 360 Controller`. If both ports already have a gamepad, the notice says `Gamepad not assigned: both ports already have one`. The bottom line of each remap screen lists the gamepad on each port, or `none`.
@@ -156,5 +158,5 @@ The emulator rewrites `config.ini` whenever it saves a setting, so hand-added ke
 - **The left stick is not bindable.** It drives the disc.
 - **The right stick drives the keypad directions** (Tron Deadly Discs). It is not bindable. Its click and both triggers can be bound as gamepad inputs.
 - **Keypad input from a stick is not supported.** Only the right stick reaches the keypad directions.
-- **ECS keyboard is not emulated.** The ECS PSG2 sound chip is emulated and mixed with PSG1. Games that read the ECS keyboard, such as Melody Blaster and Number Jumble, may not play correctly.
+- **ECS keyboard is not emulated yet.** The ECS keyboard toggle turns off the Intellivision keyboard bindings, but keypresses do not reach the ECS keyboard matrix yet. The ECS PSG2 sound chip is emulated and mixed with PSG1. Games that read the ECS keyboard, such as Melody Blaster and Number Jumble, may not play correctly.
 - **Melody Blaster and Scooby Doo** report bad opcodes and do not run yet.

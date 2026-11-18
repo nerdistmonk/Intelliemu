@@ -444,6 +444,7 @@ static void fill_menu_state(struct menu_state *state)
    state->volume = settings.volume;
    state->aspect_4_3 = settings.aspect_4_3;
    state->xbrz = xbrz_on();
+   state->ecs_keyboard = settings.ecs_keyboard;
    state->state_slot = settings.state_slot;
    state->canvas_width = (int)pic_w;
    state->recent = &recent;
@@ -663,6 +664,13 @@ static void toggle_xbrz(void)
    settings_save(&settings);
 }
 
+static void toggle_ecs_keyboard(void)
+{
+   settings.ecs_keyboard = !settings.ecs_keyboard;
+   input_set_ecs_keyboard(settings.ecs_keyboard);
+   settings_save(&settings);
+}
+
 static void notify(const char *text)
 {
    SDL_strlcpy(notice, text, sizeof(notice));
@@ -812,6 +820,9 @@ static void handle_menu_action(const struct menu_action *action)
          break;
       case MENU_TOGGLE_XBRZ:
          toggle_xbrz();
+         break;
+      case MENU_TOGGLE_ECS_KEYBOARD:
+         toggle_ecs_keyboard();
          break;
       case MENU_SCREENSHOT:
          take_screenshot();
@@ -1030,6 +1041,7 @@ static int run(const struct options *opt)
    input_set_gamepad_ids(settings.gamepad_id);
    input_init();
    input_set_bindings(settings.bindings);
+   input_set_ecs_keyboard(settings.ecs_keyboard);
    open_rom_event = SDL_RegisterEvents(1);
    if (!open_rom_event)
    {

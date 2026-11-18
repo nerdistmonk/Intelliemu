@@ -25,6 +25,7 @@ struct settings
    bool muted;
    bool aspect_4_3;
    bool xbrz;
+   bool ecs_keyboard;
    int sample_rate;
    int volume;
    int state_slot;

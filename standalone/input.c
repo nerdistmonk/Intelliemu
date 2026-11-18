@@ -65,6 +65,9 @@ static bool trigger_down[PLAYER_COUNT][2];
 /* While blocked (menu open, paused, or no game), the core sees no input. Releases still count. */
 static bool blocked;
 
+/* While set, keyboard keys are not bound to Intellivision controls. Gamepads still work. Set by input_set_ecs_keyboard(). */
+static bool ecs_keyboard;
+
 /* Returns the core keypad character for a control, or 0 if the control is not a keypad button. */
 static uint32_t keypad_character(int control)
 {
@@ -206,7 +209,7 @@ static void key_pressed(SDL_Scancode sc)
    int port;
    int control;
 
-   if (sc == SDL_SCANCODE_UNKNOWN || blocked)
+   if (sc == SDL_SCANCODE_UNKNOWN || blocked || ecs_keyboard)
       return;
 
    for (port = 0; port < PLAYER_COUNT; port++)
@@ -526,6 +529,15 @@ void input_set_blocked(bool value)
       input_release_all();
 }
 
+void input_set_ecs_keyboard(bool value)
+{
+   if (value == ecs_keyboard)
+      return;
+
+   input_release_all();
+   ecs_keyboard = value;
+}
+
 void input_handle_event(const SDL_Event *event)
 {
    int port;
@@ -624,7 +636,7 @@ void frontend_input_poll(void)
       {
          SDL_Scancode sc = maps[port].keys[control];
 
-         if ((sc != SDL_SCANCODE_UNKNOWN && keys[sc]) || pad_held(pad, maps[port].pads[control]))
+         if ((!ecs_keyboard && sc != SDL_SCANCODE_UNKNOWN && keys[sc]) || pad_held(pad, maps[port].pads[control]))
             bits |= (uint16_t)(1u << joypad_ids[control]);
       }
 

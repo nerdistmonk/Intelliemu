@@ -26,6 +26,7 @@ enum menu_command
    MENU_TOGGLE_XBRZ,
    MENU_SCREENSHOT,
    MENU_TOGGLE_MUTE,
+   MENU_TOGGLE_ECS_KEYBOARD,
    MENU_SET_SAMPLE_RATE,
    MENU_SET_VOLUME,
    MENU_REMAP_RIGHT_KEYS,
@@ -46,6 +47,7 @@ struct menu_state
    int volume;
    bool aspect_4_3;
    bool xbrz;
+   bool ecs_keyboard;
    int state_slot;
    int canvas_width;
    const struct recent_list *recent;

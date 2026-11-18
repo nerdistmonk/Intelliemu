@@ -51,6 +51,7 @@ void input_handle_event(const SDL_Event *event);
 void input_release_all(void);
 void input_after_run(void);
 void input_set_blocked(bool blocked);
+void input_set_ecs_keyboard(bool enabled);
 void input_set_bindings(const struct control_map bindings[PLAYER_COUNT]);
 void input_set_gamepad_ids(const char ids[PLAYER_COUNT][GAMEPAD_ID_MAX]);
 void input_get_gamepad_ids(char ids[PLAYER_COUNT][GAMEPAD_ID_MAX]);

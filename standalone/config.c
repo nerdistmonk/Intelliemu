@@ -134,6 +134,7 @@ static void settings_defaults(struct settings *s)
    s->muted = false;
    s->aspect_4_3 = true;
    s->xbrz = false;
+   s->ecs_keyboard = false;
    s->sample_rate = DEFAULT_SAMPLE_RATE;
    s->volume = DEFAULT_VOLUME;
    s->state_slot = 1;
@@ -292,6 +293,8 @@ static void apply_setting(struct settings *s, const char *key, const char *value
       apply_flag(&s->aspect_4_3, value);
    else if (!strcmp(key, "xbrz"))
       apply_flag(&s->xbrz, value);
+   else if (!strcmp(key, "ecs_keyboard"))
+      apply_flag(&s->ecs_keyboard, value);
    else if (!strcmp(key, "system_dir") && *value)
    {
       char *copy = SDL_strdup(value);
@@ -398,13 +401,15 @@ bool settings_save(const struct settings *s)
          "scale = %ld\n"
          "# system_dir: extra folder searched for BIOS files (-s overrides it for one run)\n"
          "system_dir = %s\n"
-         "# fullscreen, muted, aspect_4_3 and xbrz: 1 or 0; also changed from the menu and hotkeys\n"
+         "# fullscreen, muted, aspect_4_3, xbrz and ecs_keyboard: 1 or 0; also changed from the menu and hotkeys\n"
          "# aspect_4_3: 1 shows the picture at 4:3, 0 stretches it to fill the window\n"
          "# xbrz: 1 applies the xBRZ 2x smoothing filter\n"
+         "# ecs_keyboard: 1 makes the keyboard act as the ECS keyboard and turns off the Intellivision keyboard bindings\n"
          "fullscreen = %d\n"
          "muted = %d\n"
          "aspect_4_3 = %d\n"
          "xbrz = %d\n"
+         "ecs_keyboard = %d\n"
          "# sample_rate: audio output rate, 11025, 22050, 44100 or 48000; also changed from the Audio menu\n"
          "sample_rate = %d\n"
          "# volume: audio volume, 0-100; also changed from the Audio menu\n"
@@ -417,6 +422,7 @@ bool settings_save(const struct settings *s)
          "%s",
          MAX_SCALE, s->scale, s->system_dir ? s->system_dir : ".",
          s->fullscreen ? 1 : 0, s->muted ? 1 : 0, s->aspect_4_3 ? 1 : 0, s->xbrz ? 1 : 0,
+         s->ecs_keyboard ? 1 : 0,
          s->sample_rate, s->volume,
          MAX_STATE_SLOT, s->state_slot, bindings_text) < 0)
       return false;
