@@ -6,7 +6,7 @@ Intelliemu runs Mattel Intellivision ROMs in a standalone window using the freei
 ## Requirements
 - Linux with the SDL3 runtime
 - `release/intelliemu` and `release/freeintv_libretro.so` (see [Building](README.md#building))
-- Intellivision BIOS files `exec.bin` and `grom.bin` (see [BIOS Files](#bios-files))
+- Intellivision BIOS files (see [BIOS Files](#bios-files))
 - Intellivision ROMs in `.int` format
 
 ---
@@ -17,7 +17,7 @@ Intelliemu runs Mattel Intellivision ROMs in a standalone window using the freei
 - Or start with no game, then choose **File > Open ROM...** (Ctrl+O)
 - **File** lists your 8 most recent ROMs. Select one to reopen it.
 - Command-line options apply to one run and are never saved:
-  - `-s DIR`: folder that holds `exec.bin` and `grom.bin`
+  - `-s DIR`: extra folder searched for BIOS files
   - `-x N`: window scale, 1-16
   - `-c PATH`: libretro core to load (default: the `freeintv_libretro.so` built with the emulator)
   - `-h`: show help
@@ -26,12 +26,18 @@ Intelliemu runs Mattel Intellivision ROMs in a standalone window using the freei
 
 ## BIOS Files
 
-The emulator reads `exec.bin` and `grom.bin` from the folder in `system_dir` (default: the current directory). `-s DIR` overrides it for one run. The filenames are case-sensitive. The required MD5 hashes are listed in the [README](README.md#bios).
+The emulator searches these folders, in order, for each BIOS image (`-s` only adds the last one, for one run):
+
+1. `~/.config/Intelliemu/bios/` (or `$XDG_CONFIG_HOME/Intelliemu/bios/`)
+2. `bios/` beside `release/intelliemu`
+3. The folder in `system_dir` (default: the current directory)
+
+Accepted filenames are the same as in the [README](README.md#bios). Names match regardless of case, punctuation, a leading `INTV`, and a `.bin` or `.rom` extension, so `INTV_EROM.bin` and `intv-erom.BIN` both work. A file must be exactly 8192 bytes (executive) or 2048 bytes (graphics); other sizes are skipped with a message. If an image is missing, the emulator prints the folders it searched.
 
 ```
-bios/
-├── exec.bin
-└── grom.bin
+~/.config/Intelliemu/bios/
+├── INTV_EROM.bin
+└── INTV_GROM.bin
 ```
 
 ---
@@ -95,7 +101,7 @@ Settings live in `$XDG_CONFIG_HOME/Intelliemu/` (default: `~/.config/Intelliemu/
 | Key | Values | Notes |
 | --- | --- | --- |
 | `scale` | 1-16 | Initial window scale. `-x` does not change it. |
-| `system_dir` | folder path | Folder with `exec.bin` and `grom.bin` |
+| `system_dir` | folder path | Extra folder searched for BIOS files |
 | `fullscreen` | `1` or `0` | Changed with F11 or the Video menu. Saved immediately. |
 | `muted` | `1` or `0` | Changed with the Audio menu. Saved immediately. |
 | `state_slot` | 1-9 | Changed with F9 or the State menu. Saved immediately. |

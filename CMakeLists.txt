@@ -82,6 +82,7 @@ if(INTELLIEMU_STANDALONE)
     add_executable(intelliemu
         standalone/main.c
         standalone/config.c
+        standalone/bios.c
         standalone/core.c
         standalone/input.c
         standalone/recent.c

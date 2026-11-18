@@ -9,10 +9,13 @@
 
 #include "libretro.h"
 
+struct bios_files;
+
 typedef struct core
 {
    SDL_SharedObject *handle;
    const char *system_dir;
+   const struct bios_files *bios;
    struct retro_keyboard_callback keyboard;
    bool initialized;
    bool game_loaded;
@@ -36,7 +39,7 @@ typedef struct core
    bool (RETRO_CALLCONV *unserialize)(const void *data, size_t size);
 } core_t;
 
-bool core_open(core_t *core, const char *library, const char *system_dir);
+bool core_open(core_t *core, const char *library, const char *system_dir, const struct bios_files *bios);
 bool core_load_game(core_t *core, const char *rom_path);
 void core_close(core_t *core);
 void core_keyboard_event(bool down, uint32_t character);

@@ -11,7 +11,7 @@
 #define SETTINGS_FILE "config.ini"
 #define SETTINGS_MAX_SIZE (64 * 1024)
 
-static char *config_dir(void)
+char *config_dir(void)
 {
    const char *xdg = getenv("XDG_CONFIG_HOME");
    const char *home = getenv("HOME");
@@ -231,7 +231,7 @@ bool settings_save(const struct settings *s)
          "# Intelliemu settings. Use key = value; unknown keys are ignored.\n"
          "# scale: initial window scale, 1-%d (-x overrides it for one run)\n"
          "scale = %ld\n"
-         "# system_dir: folder containing exec.bin and grom.bin (-s overrides it for one run)\n"
+         "# system_dir: extra folder searched for BIOS files (-s overrides it for one run)\n"
          "system_dir = %s\n"
          "# fullscreen and muted: 1 or 0; also changed from the menu and hotkeys\n"
          "fullscreen = %d\n"

@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL_main.h>
 
+#include "bios.h"
 #include "config.h"
 #include "intelliemu.h"
 #include "menu.h"
@@ -39,6 +40,7 @@ struct options
 static core_t core;
 static const char *core_path;
 static const char *system_dir;
+static struct bios_files bios;
 static char *rom_file;
 static long window_scale;
 static SDL_Window *window;
@@ -226,7 +228,7 @@ static bool open_rom(const char *path)
 
    close_game();
 
-   if (!core_open(&core, core_path, system_dir))
+   if (!core_open(&core, core_path, system_dir, &bios))
       goto fail;
 
    if (!core_load_game(&core, copy))
@@ -693,24 +695,6 @@ static void main_loop(long max_frames)
 }
 
 
-static void warn_missing_bios(const char *dir)
-{
-   static const char *const files[] = { "exec.bin", "grom.bin" };
-   size_t i;
-
-   for (i = 0; i < sizeof(files) / sizeof(files[0]); i++)
-   {
-      char *path = NULL;
-      SDL_PathInfo info;
-
-      if (SDL_asprintf(&path, "%s/%s", dir, files[i]) >= 0 &&
-            !(SDL_GetPathInfo(path, &info) && info.type == SDL_PATHTYPE_FILE))
-         fprintf(stderr, "warning: %s not found; the core needs both BIOS images\n", path);
-
-      SDL_free(path);
-   }
-}
-
 static int run(const struct options *opt)
 {
    int status_code = 1;
@@ -789,7 +773,7 @@ static void usage(const char *prog)
    fprintf(stderr,
          "usage: %s [options] [GAME]\n"
          "  -c, --core PATH    libretro core library (default: %s)\n"
-         "  -s, --system DIR   directory with exec.bin and grom.bin (default: from config.ini)\n"
+         "  -s, --system DIR   extra folder searched for BIOS files (default: from config.ini)\n"
          "  -x, --scale N      initial window scale, 1-%d (default: from config.ini)\n"
          "  -f, --frames N     exit after N frames (requires GAME; for testing)\n"
          "  -h, --help         show this help\n"
@@ -880,8 +864,9 @@ int main(int argc, char *argv[])
       return 2;
    }
 
-   warn_missing_bios(opt.system_dir);
+   bios_find(opt.system_dir, &bios);
    status = run(&opt);
+   bios_free(&bios);
    settings_free(&settings);
    return status;
 }

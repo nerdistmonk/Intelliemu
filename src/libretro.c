@@ -29,6 +29,7 @@
 #include <vfs/vfs_implementation.h>
 
 #include "intv.h"
+#include "intelliemu_env.h"
 #include "cp1610.h"
 #include "memory.h"
 #include "stic.h"
@@ -1158,13 +1159,25 @@ void retro_init(void)
 	// get paths
 	Environ(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &SystemPath);
 
+	// the standalone frontend resolves BIOS files itself; other frontends fall back to the system directory
+	struct intelliemu_bios_paths bios = { NULL, NULL };
+	Environ(INTELLIEMU_ENV_BIOS_PATHS, &bios);
+
 	// load exec
-	fill_pathname_join(execPath, SystemPath, "exec.bin", PATH_MAX_LENGTH);
-	loadExec(execPath);
+	if (!bios.exec_path)
+	{
+		fill_pathname_join(execPath, SystemPath, "exec.bin", PATH_MAX_LENGTH);
+		bios.exec_path = execPath;
+	}
+	loadExec(bios.exec_path);
 
 	// load grom
-	fill_pathname_join(gromPath, SystemPath, "grom.bin", PATH_MAX_LENGTH);
-	loadGrom(gromPath);
+	if (!bios.grom_path)
+	{
+		fill_pathname_join(gromPath, SystemPath, "grom.bin", PATH_MAX_LENGTH);
+		bios.grom_path = gromPath;
+	}
+	loadGrom(bios.grom_path);
 
 	// Setup keyboard input
 	Environ(RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK, &kb);

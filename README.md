@@ -32,7 +32,7 @@ To build only the libretro core without SDL3, configure with `-DINTELLIEMU_STAND
 
 ## Quick Start
 
-1. Put the two BIOS files, `exec.bin` and `grom.bin`, in one folder (see [BIOS](#bios)).
+1. Put the BIOS files in one of the folders listed in [BIOS](#bios).
 2. Start a game with that folder:
 
    ```sh
@@ -49,14 +49,18 @@ See [USER_GUIDE.md](USER_GUIDE.md) for running games, menus, controls, settings,
 The FreeIntv core is licensed under GPLv2+. More information at https://github.com/libretro/FreeIntv/blob/master/LICENSE
 
 ## BIOS
-Intelliemu needs these two Intellivision BIOS files in the folder given by `-s` or the `system_dir` setting. See [BIOS Files](USER_GUIDE.md#bios-files).
+Intelliemu needs two Intellivision BIOS images. It searches these folders in order, and uses the first matching file for each image:
 
-| Function | Filename* | MD5 Hash |
-| --- | --- | --- | 
-| Executive ROM | `exec.bin`  | `62e761035cb657903761800f4437b8af` |
-| Graphics ROM | `grom.bin` | `0cd5946c6473e42e8e4c2137785e427f` |
+1. `~/.config/Intelliemu/bios/` (or `$XDG_CONFIG_HOME/Intelliemu/bios/`)
+2. `bios/` beside `release/intelliemu`
+3. The folder given by `-s` or the `system_dir` setting (default: the current directory)
 
-* BIOS filenames are case-sensitive
+| Function | Accepted filenames* | Size | MD5 Hash |
+| --- | --- | --- | --- |
+| Executive ROM | `exec.bin`, `executive.bin`, `execrom.bin`, `erom.bin`, `INTV_EROM.bin` | 8192 bytes | `62e761035cb657903761800f4437b8af` |
+| Graphics ROM | `grom.bin`, `graphics.bin`, `graphicsrom.bin`, `INTV_GROM.bin` | 2048 bytes | `0cd5946c6473e42e8e4c2137785e427f` |
+
+* Names match regardless of case, punctuation, a leading `INTV`, and a `.bin` or `.rom` extension. Files of the wrong size are skipped. Zip archives are not read, so extract the `.bin` files first.
 
 ## Entertainment Computer System
 FreeIntv does not currently support Entertainment Computer System (ECS) functionality. Contributions to the code are welcome!

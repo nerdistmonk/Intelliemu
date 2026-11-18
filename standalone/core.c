@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "bios.h"
 #include "intelliemu.h"
+#include "../src/intelliemu_env.h"
 
 static core_t *g_core;
 
@@ -16,6 +18,15 @@ static bool RETRO_CALLCONV environment_cb(unsigned cmd, void *data)
       case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
          *(const char **)data = g_core->system_dir;
          return true;
+
+      case INTELLIEMU_ENV_BIOS_PATHS:
+      {
+         struct intelliemu_bios_paths *paths = data;
+
+         paths->exec_path = g_core->bios ? g_core->bios->exec_path : NULL;
+         paths->grom_path = g_core->bios ? g_core->bios->grom_path : NULL;
+         return true;
+      }
 
       case RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK:
          g_core->keyboard = *(const struct retro_keyboard_callback *)data;
@@ -69,13 +80,14 @@ static bool load_symbol(SDL_SharedObject *handle, const char *name, void *dst)
 #define LOAD_SYMBOL(field, name) \
    do { if (!load_symbol(core->handle, (name), &core->field)) goto fail; } while (0)
 
-bool core_open(core_t *core, const char *library, const char *system_dir)
+bool core_open(core_t *core, const char *library, const char *system_dir, const struct bios_files *bios)
 {
    char *local_path = NULL;
    const char *load_path = library;
 
    memset(core, 0, sizeof(*core));
    core->system_dir = system_dir;
+   core->bios = bios;
    g_core = core;
 
    /* SDL_LoadObject does not search the working directory for bare names. */

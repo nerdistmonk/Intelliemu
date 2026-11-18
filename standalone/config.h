@@ -26,6 +26,9 @@ bool settings_save(const struct settings *s);
 
 void settings_free(struct settings *s);
 
+/* Returns ~/.config/Intelliemu/ (with trailing slash), or NULL. Caller frees. */
+char *config_dir(void);
+
 /* Reads a file from the config directory. Returns NULL if it is missing or larger than max_size. */
 char *config_read(const char *name, size_t max_size);
 
