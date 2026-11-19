@@ -499,7 +499,7 @@ static void draw_centered(float y, const char *text)
 }
 
 static const char about_text[] =
-   "IntelliEmu Version 1.0\n"
+   "IntelliEmu Version 2.0\n"
    "\n"
    "Designed by R.Shaklfrd and Claude Haiku\n"
    "\n"
