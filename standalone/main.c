@@ -33,6 +33,7 @@
 #define ABOUT_COLS 96
 #define STAGE_FRAMES 4096
 #define AUDIO_LEAD_FRAMES 3
+#define MAX_FRAMES_PER_ITER 4
 #define DIALOG_RESULT 0
 #define DIALOG_ERROR 1
 #define OPEN_ROM_ERROR "Could not load ROM"
@@ -1183,23 +1184,34 @@ static void main_loop(long max_frames)
    {
       SDL_Event event;
 
+      bool had_event = false;
+      bool ran = false;
+
       while (SDL_PollEvent(&event))
+      {
          handle_event(&event);
+         had_event = true;
+      }
 
       sync_fullscreen();
       update_input_block();
 
-      if (game_running() && !paused && frame_due())
+      if (game_running() && !paused)
       {
-         run_frame();
-         frames_run++;
-      }
-      else
-      {
-         SDL_Delay(1);
+         int burst = 0;
+         while (burst < MAX_FRAMES_PER_ITER && frame_due())
+         {
+            run_frame();
+            frames_run++;
+            burst++;
+         }
+         ran = burst > 0;
       }
 
-      render();
+      if (ran || had_event || !game_running())
+         render();
+      else
+         SDL_Delay(1);
 
       if (max_frames >= 0 && frames_run >= max_frames)
          quit_requested = true;
