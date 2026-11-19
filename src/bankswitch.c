@@ -12,6 +12,7 @@
 #define BANK_MAX_SPANS  512
 #define BANK_REGIONS    16
 #define BANK_PATH_MAX   4096
+#define BANK_PAGES      32
 
 typedef struct {
     unsigned start; /* first word index in the image file */
@@ -28,8 +29,16 @@ static size_t image_words = 0;
 static bank_span_t spans[BANK_MAX_SPANS];
 static int nspans = 0;
 static bool rom_mapped[0x10000];
-static bool region_touched[BANK_REGIONS];
+static bool paged_mapped[0x10000];
 static bool region_paged[BANK_REGIONS];
+static unsigned region_page[BANK_REGIONS];
+
+/* Plain (non-PAGE) spans flattened by Memory address. Intellicart bank
+ * registers select 2K windows of this view. */
+static uint16_t cart_flat[0x10000];
+static uint16_t bank_tbl[BANK_PAGES];
+/* Bank registers exist only for images with plain spans, as in jzIntv */
+static bool has_bank_regs = false;
 
 static bool has_ext_ci(const char *path, const char *ext)
 {
@@ -63,21 +72,21 @@ static unsigned image_word(unsigned i)
     return ((unsigned)image[2 * i] << 8) | image[2 * i + 1];
 }
 
-/* Fills every address in region r: unselected paged addresses read 0xFFFF,
- * fixed and currently selected spans are copied in. Addresses that no span
- * covers (RAM, GRAM, I/O) are never touched. */
+/* Fills region r from its selected PAGE spans: unselected paged addresses
+ * read 0xFFFF. Plain spans are handled by apply_bank_page(). Addresses that
+ * no span covers (RAM, GRAM, I/O) are never touched. */
 static void apply_region(int r, unsigned page)
 {
     unsigned base = (unsigned)r << 12;
     unsigned end = base + 0x1000;
 
     for (unsigned a = base; a < end; a++)
-        if (rom_mapped[a])
+        if (paged_mapped[a])
             Memory[a] = 0xFFFF;
 
     for (int i = 0; i < nspans; i++) {
         const bank_span_t *s = &spans[i];
-        if (s->paged && s->page != page)
+        if (!s->paged || s->page != page)
             continue;
 
         unsigned lo = s->addr;
@@ -94,11 +103,28 @@ static void apply_region(int r, unsigned page)
     }
 }
 
-static void apply_all_regions(unsigned page)
+static bool plain_mapped(unsigned a)
+{
+    return rom_mapped[a] && !paged_mapped[a];
+}
+
+/* Refills one 2K window of plain spans, selected by its bank register */
+static void apply_bank_page(unsigned page)
+{
+    unsigned base = page << 11;
+
+    for (unsigned a = base; a < base + 0x800; a++)
+        if (plain_mapped(a))
+            Memory[a] = cart_flat[(a + bank_tbl[page]) & 0xFFFF];
+}
+
+static void apply_all(void)
 {
     for (int r = 0; r < BANK_REGIONS; r++)
-        if (region_touched[r])
-            apply_region(r, page);
+        if (region_paged[r])
+            apply_region(r, region_page[r]);
+    for (unsigned p = 0; p < BANK_PAGES; p++)
+        apply_bank_page(p);
 }
 
 static bool add_span(unsigned s, unsigned e, unsigned a, bool paged, unsigned page)
@@ -120,10 +146,15 @@ static bool add_span(unsigned s, unsigned e, unsigned a, bool paged, unsigned pa
     for (unsigned i = 0; i < len; i++) {
         unsigned addr = a + i;
         rom_mapped[addr] = true;
-        region_touched[addr >> 12] = true;
-        if (paged)
+        if (paged) {
+            paged_mapped[addr] = true;
             region_paged[addr >> 12] = true;
+        } else {
+            cart_flat[addr] = image_word(s + i);
+        }
     }
+    if (!paged)
+        has_bank_regs = true;
     return true;
 }
 
@@ -207,9 +238,13 @@ void bankswitch_unload(void)
     image = NULL;
     image_words = 0;
     nspans = 0;
+    has_bank_regs = false;
     memset(rom_mapped, 0, sizeof(rom_mapped));
-    memset(region_touched, 0, sizeof(region_touched));
+    memset(paged_mapped, 0, sizeof(paged_mapped));
     memset(region_paged, 0, sizeof(region_paged));
+    memset(region_page, 0, sizeof(region_page));
+    memset(bank_tbl, 0, sizeof(bank_tbl));
+    memset(cart_flat, 0xFF, sizeof(cart_flat));
     bankswitch_active = false;
 }
 
@@ -241,7 +276,7 @@ bool bankswitch_load(const char *path)
 
     if (read_image(img_path) && parse_cfg(cfg_path)) {
         ecs_attach(0);
-        apply_all_regions(0);
+        apply_all();
         d000_ram = 0;
         bankswitch_active = true;
         ok = true;
@@ -254,8 +289,11 @@ bool bankswitch_load(const char *path)
 
 void bankswitch_reset(void)
 {
-    if (bankswitch_active)
-        apply_all_regions(0);
+    if (bankswitch_active) {
+        memset(region_page, 0, sizeof(region_page));
+        memset(bank_tbl, 0, sizeof(bank_tbl));
+        apply_all();
+    }
 }
 
 bool bankswitch_write(int adr, int val)
@@ -268,7 +306,20 @@ bool bankswitch_write(int adr, int val)
 
     int r = adr >> 12;
     if ((adr & 0x0FFF) == 0x0FFF && region_paged[r] && (adr & 0xFA50) == (val & 0xFFF0)) {
-        apply_region(r, val & 0xF);
+        region_page[r] = val & 0xF;
+        apply_region(r, region_page[r]);
+        return true;
+    }
+
+    /* Intellicart bank registers, as in jzIntv. Writes to blocks that are
+     * not plain-mapped are dropped rather than reaching RAM. */
+    if (has_bank_regs && adr >= 0x0040 && adr <= 0x005F) {
+        unsigned target = ((adr & 0xF) << 12) | ((adr & 0x10) << 7);
+        if (plain_mapped(target)) {
+            unsigned page = target >> 11;
+            bank_tbl[page] = ((val << 8) - (target & ~0x0700)) & 0xFFFF;
+            apply_bank_page(page);
+        }
         return true;
     }
 
