@@ -436,10 +436,26 @@ static void show_open_dialog(bool bankswitch)
 
 static bool frame_due(void)
 {
-   if (audio)
-      return SDL_GetAudioStreamQueued(audio) < audio_lead_bytes;
-
    return SDL_GetTicksNS() >= next_frame_ns;
+}
+
+static void audio_rate_update(void)
+{
+   float ratio = 1.0f;
+   int frame_bytes = audio_lead_bytes / AUDIO_LEAD_FRAMES;
+   int target = frame_bytes * 2;
+   int error = (int)SDL_GetAudioStreamQueued(audio) - target;
+
+   if (error > frame_bytes / 4 || error < -frame_bytes / 4)
+   {
+      float err_frames = (float)error / (float)frame_bytes;
+      if (err_frames > 1.0f)
+         err_frames = 1.0f;
+      if (err_frames < -1.0f)
+         err_frames = -1.0f;
+      ratio = 1.0f + 0.005f * err_frames;
+   }
+   SDL_SetAudioStreamFrequencyRatio(audio, ratio);
 }
 
 static void run_frame(void)
@@ -450,13 +466,13 @@ static void run_frame(void)
    input_after_run();
    audio_flush();
 
-   if (!audio)
-   {
-      now = SDL_GetTicksNS();
-      next_frame_ns += frame_ns;
-      if (next_frame_ns < now)
-         next_frame_ns = now;
-   }
+   if (audio)
+      audio_rate_update();
+
+   now = SDL_GetTicksNS();
+   next_frame_ns += frame_ns;
+   if (now > next_frame_ns + 2 * frame_ns)
+      next_frame_ns = now;
 }
 
 static void fill_menu_state(struct menu_state *state)
