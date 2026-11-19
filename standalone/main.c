@@ -46,6 +46,7 @@ struct options
    long scale;
    long max_frames;
    bool fullscreen;
+   bool bankswitch;
    int xbrz;
 };
 
@@ -1263,7 +1264,7 @@ static int run(const struct options *opt)
    update_presentation();
    set_title();
 
-   if (opt->rom && !open_rom(opt->rom, false))
+   if (opt->rom && !open_rom(opt->rom, opt->bankswitch))
       goto cleanup;
 
    main_loop(opt->max_frames);
@@ -1296,6 +1297,7 @@ static void usage(const char *prog)
          "  -f, --fullscreen   start in fullscreen\n"
          "  -x, --xbrz         start with the xBRZ filter on\n"
          "      --no-xbrz      start with the xBRZ filter off\n"
+         "  -b, --bankswitch   load GAME as a bank-switched cart (.cfg/.bin/.int)\n"
          "  -d, --frames N     exit after N frames (requires GAME; for testing)\n"
          "  -h, --help         show this help\n"
          "\n"
@@ -1349,6 +1351,7 @@ int main(int argc, char *argv[])
       .scale = settings.scale,
       .max_frames = -1,
       .fullscreen = false,
+      .bankswitch = false,
       .xbrz = -1,
    };
    int i;
@@ -1382,6 +1385,8 @@ int main(int argc, char *argv[])
          opt.xbrz = 1;
       else if (!strcmp(arg, "--no-xbrz"))
          opt.xbrz = 0;
+      else if (!strcmp(arg, "-b") || !strcmp(arg, "--bankswitch"))
+         opt.bankswitch = true;
       else if ((!strcmp(arg, "-d") || !strcmp(arg, "--frames")) && has_value)
       {
          if (!parse_long(argv[++i], 1, LONG_MAX, &opt.max_frames))
@@ -1403,6 +1408,13 @@ int main(int argc, char *argv[])
    if (opt.max_frames >= 0 && !opt.rom)
    {
       fprintf(stderr, "--frames needs a GAME to run\n");
+      usage(argv[0]);
+      return 2;
+   }
+
+   if (opt.bankswitch && !opt.rom)
+   {
+      fprintf(stderr, "--bankswitch needs a GAME to load\n");
       usage(argv[0]);
       return 2;
    }
