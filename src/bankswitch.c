@@ -230,7 +230,9 @@ static bool parse_cfg(const char *cfg_path)
         }
         if (in_memattr && *p == '$') {
             unsigned s, e;
-            if (sscanf(p, "$%x - $%x = ROM", &s, &e) == 2)
+            char attr[8] = "";
+            if (sscanf(p, "$%x - $%x = %7s", &s, &e, attr) == 3 &&
+                strcmp(attr, "ROM") == 0)
                 ok = add_memattr_rom(s, e);
             continue;
         }
