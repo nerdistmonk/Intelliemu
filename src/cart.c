@@ -479,6 +479,7 @@ static int cartFingerprint(void)
 // Carts that expect the ECS, using the fingerprints from the database above
 static const int ecsFingerprints[] = {
 	10242, // Melody Blaster (1983) (Mattel)
+	12756, // Game Factory (Prototype) (1983) (Mattel)
 	10420, // Scooby Doo's Maze Chase (1983) (Mattel)
 	10643, // Mind Strike! (1982) (Mattel)
 	11042, // Jetsons, The - Ways With Words (1983) (Mattel)
