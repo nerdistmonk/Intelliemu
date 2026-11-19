@@ -80,7 +80,7 @@ Keyboard defaults, Right port:
 | --- | --- |
 | W / A / S / D | Disc up / left / down / right |
 | Q / E | Left action / right action |
-| Tab / R | Top action / bottom action |
+| Tab / R | Top action / top-right action |
 | Z / X | Start / Select |
 | Return / Backspace | L / R button |
 | 1-9, 0 | Keypad 1-9, Keypad 0 |
@@ -92,7 +92,7 @@ Keyboard defaults, Left port:
 | --- | --- |
 | Arrow keys | Disc |
 | Delete / Page Down | Left action / right action |
-| Home / End | Top action / bottom action |
+| Home / End | Top action / top-right action |
 | Numpad / / Numpad * | Start / Select |
 | Insert / Page Up | L / R button |
 | Numpad 1-9, Numpad 0 | Keypad 1-9, Keypad 0 |
