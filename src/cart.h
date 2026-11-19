@@ -20,6 +20,5 @@
 
 int LoadCart(const char *path);
 int cartUsesECS(void);
-int isGrailRom(void);
 
 #endif

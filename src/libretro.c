@@ -29,7 +29,6 @@
 #include <vfs/vfs_implementation.h>
 
 #include "intv.h"
-#include "cart.h"
 #include "intelliemu_env.h"
 #include "cp1610.h"
 #include "memory.h"
@@ -815,7 +814,6 @@ static void process_toggle_button_input(void)
 /* Keypad digits from the frontend, per player. The mask is ORed into every controller write,
    so keypad presses combine with the disc and buttons. */
 static int keypadMask[2];
-static int keypadPulse[2];
 static uint32_t keypadChar[2];
 
 static int keypad_code(uint32_t character)
@@ -833,8 +831,7 @@ static int keypad_code(uint32_t character)
 
 static void write_port(int player, int state)
 {
-	setControllerInput(player, state | keypadMask[player] | keypadPulse[player]);
-	keypadPulse[player] = 0;
+	setControllerInput(player, state | keypadMask[player]);
 }
 
 void intelliemu_keypad_event(unsigned port, bool down, uint32_t character)
@@ -849,10 +846,7 @@ void intelliemu_keypad_event(unsigned port, bool down, uint32_t character)
 		code = keypad_code(character);
 		if (code)
 		{
-			if (isGrailRom())
-				keypadPulse[port] = code;
-			else
-				keypadMask[port] = code;
+			keypadMask[port] = code;
 			keypadChar[port] = character;
 		}
 	}
