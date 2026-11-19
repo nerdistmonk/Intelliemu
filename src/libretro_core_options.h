@@ -92,6 +92,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
       },
       "disabled"
    },
+   {
+      "freeintv_bankswitch",
+      "Load Next Content as Bank-Switched ROM",
+      NULL,
+      "Load the next content as a bank-switched cart (.cfg/.bin/.int). The option resets to Disabled after each load attempt, so only the next load uses bank mode.",
+      NULL,
+      NULL,
+      {
+         { "disabled", "Disabled" },
+         { "enabled",  "Enabled"  },
+         { NULL, NULL },
+      },
+      "disabled"
+   },
    { NULL, NULL, NULL, NULL, NULL, NULL, {{0}}, NULL },
 };
 

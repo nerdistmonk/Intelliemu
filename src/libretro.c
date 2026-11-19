@@ -1097,6 +1097,15 @@ static bool bankswitch_requested(void)
 	return Environ(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && strcmp(var.value, "enabled") == 0;
 }
 
+static void bankswitch_reset_request(void)
+{
+	struct retro_variable var = {0};
+
+	var.key   = INTELLIEMU_VAR_BANKSWITCH;
+	var.value = "disabled";
+	Environ(RETRO_ENVIRONMENT_SET_VARIABLE, &var);
+}
+
 static void check_variables(bool first_run)
 {
 	struct retro_variable var = {0};
@@ -1245,7 +1254,10 @@ void retro_init(void)
 		check_variables(true);
 		if (bankswitch_requested())
 		{
-			if (!bankswitch_load(info->path))
+			bool loaded = bankswitch_load(info->path);
+
+			bankswitch_reset_request();
+			if (!loaded)
 			{
 				OSD_drawText(3, 3, "LOAD CART: FAIL");
 				return false;

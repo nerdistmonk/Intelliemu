@@ -13,8 +13,9 @@
 #define INTELLIEMU_ENV_BIOS_PATHS (RETRO_ENVIRONMENT_PRIVATE | 1)
 
 /*
- * Set to "enabled" by the standalone's Open BankSwitch ROM command. The core then loads the
- * cart as a bank-switched ROM (.cfg/.bin/.int). Other frontends never set it.
+ * Set to "enabled" by the standalone's Open BankSwitch ROM command, or by the
+ * freeintv_bankswitch core option in other frontends. The core then loads the cart as a
+ * bank-switched ROM (.cfg/.bin/.int). The core resets the value to "disabled" after each load.
  */
 #define INTELLIEMU_VAR_BANKSWITCH "freeintv_bankswitch"
 
