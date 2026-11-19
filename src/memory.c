@@ -50,6 +50,34 @@ int stic_or[64] = {
     0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff, 0x3fff,
 };
 
+// JLP multiply/divide accelerator at $9F80-$9F8F (semantics per jzintv jlp/jlp.c)
+static void jlpMulDiv(int adr)
+{
+    unsigned int prod, quot, rem;
+    int a = Memory[adr & ~1] & 0xFFFF, b = Memory[adr | 1] & 0xFFFF;
+    switch (adr & 0x0E) {
+    case 0x00: prod = (unsigned int)((int)(short)a * (int)(short)b); break;
+    case 0x02: prod = (unsigned int)((int)(short)a * (int)(unsigned short)b); break;
+    case 0x04: prod = (unsigned int)((int)(unsigned short)a * (int)(short)b); break;
+    case 0x06: prod = (unsigned int)((unsigned int)(unsigned short)a * (unsigned int)(unsigned short)b); break;
+    case 0x08:
+        if (!b) return;
+        quot = (unsigned int)((int)(short)a / (int)(short)b);
+        rem  = (unsigned int)((int)(short)a % (int)(short)b);
+        Memory[0x9F8E] = quot & 0xFFFF; Memory[0x9F8F] = rem & 0xFFFF;
+        return;
+    case 0x0A:
+        if (!b) return;
+        quot = (unsigned int)((unsigned short)a / (unsigned short)b);
+        rem  = (unsigned int)((unsigned short)a % (unsigned short)b);
+        Memory[0x9F8E] = quot & 0xFFFF; Memory[0x9F8F] = rem & 0xFFFF;
+        return;
+    default: return;
+    }
+    Memory[0x9F8E] = prod & 0xFFFF;
+    Memory[0x9F8F] = (prod >> 16) & 0xFFFF;
+}
+
 void writeMem(int adr, int val) // Write (should handle hooks/alias)
 {
     val &= 0xFFFF;
@@ -130,6 +158,11 @@ void writeMem(int adr, int val) // Write (should handle hooks/alias)
         return;
     }
     
+    if (adr >= 0x9F80 && adr <= 0x9F8F) {
+        Memory[adr] = val & 0xFFFF;
+        jlpMulDiv(adr);
+        return;
+    }
     Memory[adr] = val;
     
 }
