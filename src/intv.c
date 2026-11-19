@@ -25,6 +25,7 @@
 #include "controller.h"
 #include "cart.h"
 #include "osd.h"
+#include "bankswitch.h"
 #include "ivoice.h"
 #include "ecs.h"
 
@@ -154,6 +155,7 @@ void Reset()
 	STICReset();
     ivoice_reset();
     ecs_reset();
+    bankswitch_reset();
 }
 
 void Init()

@@ -23,6 +23,7 @@
 #include "psg.h"
 #include "ivoice.h"
 #include "ecs.h"
+#include "bankswitch.h"
 
 unsigned int Memory[0x10000];
 
@@ -82,6 +83,9 @@ void writeMem(int adr, int val) // Write (should handle hooks/alias)
 {
     val &= 0xFFFF;
     adr &= 0xFFFF;
+
+    if (bankswitch_write(adr, val))
+        return;
 
     if (ecs_enabled && ecs_write(adr, val))
         return;

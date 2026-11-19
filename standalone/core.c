@@ -29,6 +29,17 @@ static bool RETRO_CALLCONV environment_cb(unsigned cmd, void *data)
          return true;
       }
 
+      case RETRO_ENVIRONMENT_GET_VARIABLE:
+      {
+         struct retro_variable *var = data;
+
+         if (!g_core->bankswitch || !var->key || strcmp(var->key, INTELLIEMU_VAR_BANKSWITCH) != 0)
+            return false;
+
+         var->value = "enabled";
+         return true;
+      }
+
       default:
          return false;
    }
@@ -149,11 +160,13 @@ fail:
    return false;
 }
 
-bool core_load_game(core_t *core, const char *rom_path)
+bool core_load_game(core_t *core, const char *rom_path, bool bankswitch)
 {
    SDL_PathInfo info;
    SDL_IOStream *io;
    struct retro_game_info game = { .path = rom_path };
+
+   core->bankswitch = bankswitch;
 
    if (!SDL_GetPathInfo(rom_path, &info))
    {

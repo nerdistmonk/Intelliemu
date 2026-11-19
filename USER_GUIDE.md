@@ -16,6 +16,7 @@ Intelliemu runs Mattel Intellivision ROMs in a standalone window using the freei
 - Start a game from the command line: `./release/intelliemu Game.int`
 - Or start with no game, then choose **File > Open ROM...** (Ctrl+O)
 - **File** lists your 8 most recent ROMs. Select one to reopen it.
+- Bank-switched carts (for example Dungeon Horde, a `.cfg` plus `.bin` or `.int` pair) use **File > Open BankSwitch ROM...**. Pick the `.cfg` or the image file. These carts are not added to the recent list.
 - Command-line options apply to one run and are never saved:
   - `-s DIR`: extra folder searched for BIOS files
   - `-w N`: window scale, 1-16
@@ -51,7 +52,7 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 
 | Menu | Items |
 | --- | --- |
-| File | Open ROM..., Close ROM, recent ROMs, About IntelliEmu..., Exit |
+| File | Open ROM..., Open BankSwitch ROM..., Close ROM, recent ROMs, About IntelliEmu..., Exit |
 | Emulation | Reset, Pause / Resume, ECS keyboard, Remap Right keyboard..., Remap Left keyboard..., Remap Right gamepad..., Remap Left gamepad..., Swap Right and Left gamepads, Restore default bindings |
 | State | Save slot N, Load slot N, Next slot |
 | Video | Fullscreen, 4:3 aspect, xBRZ filter, Screenshot (PNG) |

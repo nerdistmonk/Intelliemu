@@ -106,6 +106,7 @@ static int build_items(int title, const struct menu_state *state, struct menu_it
    {
       case 0:
          add_item(items, &n, "Open ROM...", "Ctrl+O", MENU_OPEN_ROM, 0, true);
+         add_item(items, &n, "Open BankSwitch ROM...", NULL, MENU_OPEN_BANK_ROM, 0, true);
          add_item(items, &n, "Close ROM", "Ctrl+W", MENU_CLOSE_ROM, 0, state->game_running);
          add_separator(items, &n);
          if (state->recent->count == 0)

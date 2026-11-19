@@ -13,6 +13,7 @@ enum menu_command
 {
    MENU_NONE,
    MENU_OPEN_ROM,
+   MENU_OPEN_BANK_ROM,
    MENU_CLOSE_ROM,
    MENU_RECENT,
    MENU_ABOUT,

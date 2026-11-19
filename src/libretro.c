@@ -39,6 +39,7 @@
 #include "ecs_keyboard_device.h"
 #include "controller.h"
 #include "osd.h"
+#include "bankswitch.h"
 
 // Include stb_image header (implementation in stb_image_impl.c)
 #include "stb_image.h"
@@ -1087,6 +1088,15 @@ static void update_input(void)
 	joypad1[17] = InputState(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
 }
 
+static bool bankswitch_requested(void)
+{
+	struct retro_variable var = {0};
+
+	var.key   = INTELLIEMU_VAR_BANKSWITCH;
+	var.value = NULL;
+	return Environ(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && strcmp(var.value, "enabled") == 0;
+}
+
 static void check_variables(bool first_run)
 {
 	struct retro_variable var = {0};
@@ -1233,7 +1243,19 @@ void retro_init(void)
 	bool retro_load_game(const struct retro_game_info *info)
 	{
 		check_variables(true);
-		LoadGame(info->path);
+		if (bankswitch_requested())
+		{
+			if (!bankswitch_load(info->path))
+			{
+				OSD_drawText(3, 3, "LOAD CART: FAIL");
+				return false;
+			}
+		}
+		else
+		{
+			bankswitch_unload();
+			LoadGame(info->path);
+		}
 		
 		// Load embedded asset images (controller base, banner, overlay)
 		load_controller_base();
@@ -1244,6 +1266,7 @@ void retro_init(void)
 
 void retro_unload_game(void)
 {
+	bankswitch_unload();
 	quit(0);
 }
 

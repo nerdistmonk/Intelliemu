@@ -17,6 +17,7 @@ add_library(freeintv_libretro SHARED
     src/ecs.c
     src/cp1610.c
     src/cart.c
+    src/bankswitch.c
     src/controller.c
     src/osd.c
     src/ivoice.c

@@ -348,7 +348,7 @@ static void close_game(void)
    set_title();
 }
 
-static bool open_rom(const char *path)
+static bool open_rom(const char *path, bool bankswitch)
 {
    /* The copy comes first: path may point into the recent list, which recent_add rewrites. */
    char *copy = SDL_strdup(path);
@@ -362,7 +362,7 @@ static bool open_rom(const char *path)
    if (!core_open(&core, core_path, system_dir, &bios))
       goto fail;
 
-   if (!core_load_game(&core, copy))
+   if (!core_load_game(&core, copy, bankswitch))
    {
       core_close(&core);
       goto fail;
@@ -379,7 +379,9 @@ static bool open_rom(const char *path)
 
    rom_file = copy;
    status[0] = '\0';
-   recent_add(&recent, rom_file);
+   /* Bank-switched carts are not recorded: the recent list reopens plain ROMs only. */
+   if (!bankswitch)
+      recent_add(&recent, rom_file);
 
    update_presentation();
    resize_window();
@@ -397,7 +399,6 @@ static void SDLCALL open_dialog_done(void *userdata, const char *const *filelist
    SDL_Event event;
    char *path = NULL;
 
-   (void)userdata;
    (void)filter;
 
    if (!filelist)
@@ -413,19 +414,22 @@ static void SDLCALL open_dialog_done(void *userdata, const char *const *filelist
    event.type = open_rom_event;
    event.user.code = filelist ? DIALOG_RESULT : DIALOG_ERROR;
    event.user.data1 = path;
+   event.user.data2 = userdata;
    if (!SDL_PushEvent(&event))
       SDL_free(path);
 }
 
-static void show_open_dialog(void)
+static void show_open_dialog(bool bankswitch)
 {
-   static const SDL_DialogFileFilter filters[] = { { "Intellivision ROMs", "int;bin;rom" } };
+   static const SDL_DialogFileFilter rom_filters[] = { { "Intellivision ROMs", "int;bin;rom" } };
+   static const SDL_DialogFileFilter bank_filters[] = { { "Bank-switched ROMs", "cfg;bin;int" } };
+   const SDL_DialogFileFilter *filters = bankswitch ? bank_filters : rom_filters;
 
    if (dialog_pending)
       return;
 
    dialog_pending = true;
-   SDL_ShowOpenFileDialog(open_dialog_done, NULL, window, filters, 1, settings.open_dir, false);
+   SDL_ShowOpenFileDialog(open_dialog_done, (void *)(uintptr_t)bankswitch, window, filters, 1, settings.open_dir, false);
 }
 
 static bool frame_due(void)
@@ -908,7 +912,10 @@ static void handle_menu_action(const struct menu_action *action)
    switch (action->command)
    {
       case MENU_OPEN_ROM:
-         show_open_dialog();
+         show_open_dialog(false);
+         break;
+      case MENU_OPEN_BANK_ROM:
+         show_open_dialog(true);
          break;
       case MENU_CLOSE_ROM:
          close_game();
@@ -919,7 +926,7 @@ static void handle_menu_action(const struct menu_action *action)
             char *path = SDL_strdup(recent.paths[action->arg]);
 
             if (path)
-               open_rom(path);
+               open_rom(path, false);
             SDL_free(path);
          }
          break;
@@ -1099,6 +1106,7 @@ static void remember_open_dir(const char *path)
 static void handle_dialog_result(const SDL_Event *event)
 {
    char *path = event->user.data1;
+   bool bankswitch = event->user.data2 != NULL;
 
    dialog_pending = false;
 
@@ -1107,7 +1115,7 @@ static void handle_dialog_result(const SDL_Event *event)
    else if (path)
    {
       remember_open_dir(path);
-      open_rom(path);
+      open_rom(path, bankswitch);
    }
 
    SDL_free(path);
@@ -1255,7 +1263,7 @@ static int run(const struct options *opt)
    update_presentation();
    set_title();
 
-   if (opt->rom && !open_rom(opt->rom))
+   if (opt->rom && !open_rom(opt->rom, false))
       goto cleanup;
 
    main_loop(opt->max_frames);

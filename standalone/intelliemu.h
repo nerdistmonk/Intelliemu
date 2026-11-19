@@ -19,6 +19,7 @@ typedef struct core
    const struct bios_files *bios;
    bool initialized;
    bool game_loaded;
+   bool bankswitch;
 
    unsigned (RETRO_CALLCONV *api_version)(void);
    void (RETRO_CALLCONV *get_system_av_info)(struct retro_system_av_info *info);
@@ -41,7 +42,7 @@ typedef struct core
 } core_t;
 
 bool core_open(core_t *core, const char *library, const char *system_dir, const struct bios_files *bios);
-bool core_load_game(core_t *core, const char *rom_path);
+bool core_load_game(core_t *core, const char *rom_path, bool bankswitch);
 void core_close(core_t *core);
 void core_keypad_event(unsigned port, bool down, uint32_t character);
 
