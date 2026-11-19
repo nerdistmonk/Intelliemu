@@ -173,11 +173,28 @@ static bool add_span(unsigned s, unsigned e, unsigned a, bool paged, unsigned pa
     return true;
 }
 
+/* Preload fills cart_flat only, so the words are present for bank windows
+ * but not mapped into Memory, as with jzIntv's [preload]. */
+static bool add_preload(unsigned s, unsigned e, unsigned a)
+{
+    if (e < s || e >= image_words)
+        return false;
+
+    unsigned len = e - s + 1;
+    if (a + len > 0x10000)
+        return false;
+
+    for (unsigned i = 0; i < len; i++)
+        cart_flat[a + i] = image_word(s + i);
+    return true;
+}
+
 static bool parse_cfg(const char *cfg_path)
 {
     RFILE *f = open_read(cfg_path);
     char line[512];
     bool in_mapping = false;
+    bool in_preload = false;
     bool in_banksw = false;
     bool ok = true;
 
@@ -191,9 +208,19 @@ static bool parse_cfg(const char *cfg_path)
 
         if (*p == '[') {
             in_mapping = strncmp(p, "[mapping]", 9) == 0;
+            in_preload = strncmp(p, "[preload]", 9) == 0;
             in_banksw = strncmp(p, "[bankswitch]", 12) == 0;
             if (in_banksw)
                 bank_sec = true;
+            continue;
+        }
+        if (in_preload && *p == '$') {
+            unsigned s, e, a;
+            if (sscanf(p, "$%x - $%x = $%x", &s, &e, &a) != 3) {
+                ok = false;
+                break;
+            }
+            ok = add_preload(s, e, a);
             continue;
         }
         if (in_banksw && *p == '$') {
