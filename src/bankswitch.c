@@ -189,12 +189,25 @@ static bool add_preload(unsigned s, unsigned e, unsigned a)
     return true;
 }
 
+/* Marks addresses as readable cart ROM, as jzIntv's [memattr] ROM does.
+ * Contents come from apply_bank_page() for banked windows. */
+static bool add_memattr_rom(unsigned s, unsigned e)
+{
+    if (e < s || e >= 0x10000)
+        return false;
+
+    for (unsigned a = s; a <= e; a++)
+        rom_mapped[a] = true;
+    return true;
+}
+
 static bool parse_cfg(const char *cfg_path)
 {
     RFILE *f = open_read(cfg_path);
     char line[512];
     bool in_mapping = false;
     bool in_preload = false;
+    bool in_memattr = false;
     bool in_banksw = false;
     bool ok = true;
 
@@ -209,9 +222,16 @@ static bool parse_cfg(const char *cfg_path)
         if (*p == '[') {
             in_mapping = strncmp(p, "[mapping]", 9) == 0;
             in_preload = strncmp(p, "[preload]", 9) == 0;
+            in_memattr = strncmp(p, "[memattr]", 9) == 0;
             in_banksw = strncmp(p, "[bankswitch]", 12) == 0;
             if (in_banksw)
                 bank_sec = true;
+            continue;
+        }
+        if (in_memattr && *p == '$') {
+            unsigned s, e;
+            if (sscanf(p, "$%x - $%x = ROM", &s, &e) == 2)
+                ok = add_memattr_rom(s, e);
             continue;
         }
         if (in_preload && *p == '$') {
