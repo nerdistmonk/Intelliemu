@@ -37,8 +37,28 @@ static unsigned region_page[BANK_REGIONS];
  * registers select 2K windows of this view. */
 static uint16_t cart_flat[0x10000];
 static uint16_t bank_tbl[BANK_PAGES];
-/* Bank registers exist only for images with plain spans, as in jzIntv */
-static bool has_bank_regs = false;
+/* Bank register gating. A cfg with a [bankswitch] section uses jzIntv's
+ * B-flag model: bank_pg marks the 256-word pages it lists. A cfg without
+ * one keeps the legacy rule: any plain span enables the registers. */
+static bool bank_sec = false;
+static bool bsw_any = false;
+static bool bank_pg[0x10000 >> 8];
+static bool plain_any = false;
+
+static bool bank_regs_on(void)
+{
+    return bank_sec ? bsw_any : plain_any;
+}
+
+static bool plain_mapped(unsigned a)
+{
+    return rom_mapped[a] && !paged_mapped[a];
+}
+
+static bool bank_write_ok(unsigned target)
+{
+    return bank_sec ? bank_pg[target >> 8] : plain_mapped(target);
+}
 
 static bool has_ext_ci(const char *path, const char *ext)
 {
@@ -103,11 +123,6 @@ static void apply_region(int r, unsigned page)
     }
 }
 
-static bool plain_mapped(unsigned a)
-{
-    return rom_mapped[a] && !paged_mapped[a];
-}
-
 /* Refills one 2K window of plain spans, selected by its bank register */
 static void apply_bank_page(unsigned page)
 {
@@ -154,7 +169,7 @@ static bool add_span(unsigned s, unsigned e, unsigned a, bool paged, unsigned pa
         }
     }
     if (!paged)
-        has_bank_regs = true;
+        plain_any = true;
     return true;
 }
 
@@ -163,6 +178,7 @@ static bool parse_cfg(const char *cfg_path)
     RFILE *f = open_read(cfg_path);
     char line[512];
     bool in_mapping = false;
+    bool in_banksw = false;
     bool ok = true;
 
     if (!f)
@@ -175,6 +191,20 @@ static bool parse_cfg(const char *cfg_path)
 
         if (*p == '[') {
             in_mapping = strncmp(p, "[mapping]", 9) == 0;
+            in_banksw = strncmp(p, "[bankswitch]", 12) == 0;
+            if (in_banksw)
+                bank_sec = true;
+            continue;
+        }
+        if (in_banksw && *p == '$') {
+            unsigned s, e;
+            if (sscanf(p, "$%x - $%x", &s, &e) != 2 || e < s || e >= 0x10000) {
+                ok = false;
+                break;
+            }
+            for (unsigned pg = s >> 8; pg <= e >> 8; pg++)
+                bank_pg[pg] = true;
+            bsw_any = true;
             continue;
         }
         if (!in_mapping || *p != '$')
@@ -192,6 +222,15 @@ static bool parse_cfg(const char *cfg_path)
 
     filestream_close(f);
     return ok;
+}
+
+static int count_paged_spans(void)
+{
+    int n = 0;
+    for (int i = 0; i < nspans; i++)
+        if (spans[i].paged)
+            n++;
+    return n;
 }
 
 static bool read_image(const char *img_path)
@@ -238,7 +277,10 @@ void bankswitch_unload(void)
     image = NULL;
     image_words = 0;
     nspans = 0;
-    has_bank_regs = false;
+    bank_sec = false;
+    bsw_any = false;
+    plain_any = false;
+    memset(bank_pg, 0, sizeof(bank_pg));
     memset(rom_mapped, 0, sizeof(rom_mapped));
     memset(paged_mapped, 0, sizeof(paged_mapped));
     memset(region_paged, 0, sizeof(region_paged));
@@ -280,6 +322,11 @@ bool bankswitch_load(const char *path)
         d000_ram = 0;
         bankswitch_active = true;
         ok = true;
+
+        /* jzIntv's Intellicart path skips PAGE spans; we apply them from the cfg */
+        int npaged = count_paged_spans();
+        if (npaged > 0)
+            printf("[INFO] [FREEINTV] Bankswitch cfg: %d PAGE span(s) applied as ECS paging\n", npaged);
     }
 
     if (!ok)
@@ -312,10 +359,10 @@ bool bankswitch_write(int adr, int val)
     }
 
     /* Intellicart bank registers, as in jzIntv. Writes to blocks that are
-     * not plain-mapped are dropped rather than reaching RAM. */
-    if (has_bank_regs && adr >= 0x0040 && adr <= 0x005F) {
+     * not enabled for banking are dropped rather than reaching RAM. */
+    if (bank_regs_on() && adr >= 0x0040 && adr <= 0x005F) {
         unsigned target = ((adr & 0xF) << 12) | ((adr & 0x10) << 7);
-        if (plain_mapped(target)) {
+        if (bank_write_ok(target)) {
             unsigned page = target >> 11;
             bank_tbl[page] = ((val << 8) - (target & ~0x0700)) & 0xFFFF;
             apply_bank_page(page);
