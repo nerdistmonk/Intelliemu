@@ -29,6 +29,8 @@ static size_t image_words = 0;
 static bank_span_t spans[BANK_MAX_SPANS];
 static int nspans = 0;
 static bool rom_mapped[0x10000];
+/* Cart RAM from [memattr] RAM 8/16: 0 = not RAM, else the write mask */
+static uint16_t ram_mask[0x10000];
 static bool paged_mapped[0x10000];
 static bool region_paged[BANK_REGIONS];
 static unsigned region_page[BANK_REGIONS];
@@ -201,6 +203,33 @@ static bool add_memattr_rom(unsigned s, unsigned e)
     return true;
 }
 
+static bool add_memattr_ram(unsigned s, unsigned e, uint16_t mask)
+{
+    if (e < s || e >= 0x10000)
+        return false;
+
+    for (unsigned a = s; a <= e; a++)
+        ram_mask[a] = mask;
+    return true;
+}
+
+/* Run after the whole cfg is parsed, so [memattr] may come before [mapping].
+ * Cart RAM must not sit on ROM or on the STIC/bank-register/console RAM
+ * block, which bankswitch_write() handles before RAM. Zeroes the RAM. */
+static bool finish_ram(void)
+{
+    for (unsigned a = 0; a < 0x10000; a++) {
+        if (!ram_mask[a])
+            continue;
+        if (a < 0x0200 || rom_mapped[a]) {
+            printf("[ERROR] [FREEINTV] cfg RAM at $%04X overlaps cart ROM or system area\n", a);
+            return false;
+        }
+        Memory[a] = 0;
+    }
+    return true;
+}
+
 static bool parse_cfg(const char *cfg_path)
 {
     RFILE *f = open_read(cfg_path);
@@ -229,11 +258,18 @@ static bool parse_cfg(const char *cfg_path)
             continue;
         }
         if (in_memattr && *p == '$') {
-            unsigned s, e;
+            unsigned s, e, bits = 0;
             char attr[8] = "";
-            if (sscanf(p, "$%x - $%x = %7s", &s, &e, attr) == 3 &&
-                strcmp(attr, "ROM") == 0)
+            int n = sscanf(p, "$%x - $%x = %7s %u", &s, &e, attr, &bits);
+            if (n < 3)
+                continue;
+            if (strcmp(attr, "ROM") == 0)
                 ok = add_memattr_rom(s, e);
+            else if (strcmp(attr, "RAM") == 0)
+                ok = n == 4 && (bits == 8 || bits == 16) &&
+                     add_memattr_ram(s, e, bits == 8 ? 0x00FF : 0xFFFF);
+            else if (strcmp(attr, "WOM") == 0)
+                printf("[WARN] [FREEINTV] cfg WOM memattr ignored: %s", p);
             continue;
         }
         if (in_preload && *p == '$') {
@@ -331,6 +367,7 @@ void bankswitch_unload(void)
     plain_any = false;
     memset(bank_pg, 0, sizeof(bank_pg));
     memset(rom_mapped, 0, sizeof(rom_mapped));
+    memset(ram_mask, 0, sizeof(ram_mask));
     memset(paged_mapped, 0, sizeof(paged_mapped));
     memset(region_paged, 0, sizeof(region_paged));
     memset(region_page, 0, sizeof(region_page));
@@ -365,7 +402,7 @@ bool bankswitch_load(const char *path)
         return false;
     }
 
-    if (read_image(img_path) && parse_cfg(cfg_path)) {
+    if (read_image(img_path) && parse_cfg(cfg_path) && finish_ram()) {
         ecs_attach(0);
         apply_all();
         d000_ram = 0;
@@ -416,6 +453,13 @@ bool bankswitch_write(int adr, int val)
             bank_tbl[page] = ((val << 8) - (target & ~0x0700)) & 0xFFFF;
             apply_bank_page(page);
         }
+        return true;
+    }
+
+    /* Cart RAM from [memattr] RAM 8/16. Stored in Memory[]; never touched by
+     * apply_bank_page()/apply_region(), which only write ROM-mapped words. */
+    if (ram_mask[adr]) {
+        Memory[adr] = val & ram_mask[adr];
         return true;
     }
 
