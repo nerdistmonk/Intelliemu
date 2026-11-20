@@ -316,13 +316,34 @@ static void set_title(void)
    SDL_free(title);
 }
 
+/* Largest scale up to want whose width x height window fits the display's usable area, never below 1. */
+static unsigned fit_scale(SDL_DisplayID display, unsigned want, unsigned width, unsigned height)
+{
+   SDL_Rect usable;
+   unsigned max_w, max_h, fit;
+
+   if (!SDL_GetDisplayUsableBounds(display, &usable) || usable.w <= 0 || usable.h <= 0)
+      return want;
+
+   max_w = (unsigned)usable.w / width;
+   max_h = (unsigned)usable.h / height;
+   fit = max_w < max_h ? max_w : max_h;
+   if (fit < 1)
+      fit = 1;
+   return want < fit ? want : fit;
+}
+
 static void resize_window(void)
 {
+   unsigned scale;
+
    if (!window || (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN))
       return;
 
-   SDL_SetWindowSize(window, (int)(pic_w * (unsigned)window_scale),
-         (int)((view_height() + MENU_BAR_HEIGHT) * (unsigned)window_scale));
+   scale = fit_scale(SDL_GetDisplayForWindow(window), (unsigned)window_scale,
+         pic_w, view_height() + MENU_BAR_HEIGHT);
+   SDL_SetWindowSize(window, (int)(pic_w * scale),
+         (int)((view_height() + MENU_BAR_HEIGHT) * scale));
 }
 
 static void close_game(void)
@@ -1263,6 +1284,7 @@ static void main_loop(long max_frames)
 static int run(const struct options *opt)
 {
    int status_code = 1;
+   unsigned initial_scale;
 
    core_path = opt->core_path;
    system_dir = opt->system_dir;
@@ -1293,9 +1315,11 @@ static int run(const struct options *opt)
 
    recent_load(&recent);
 
+   initial_scale = fit_scale(SDL_GetPrimaryDisplay(), (unsigned)opt->scale,
+         DEFAULT_WIDTH, view_height() + MENU_BAR_HEIGHT);
    window = SDL_CreateWindow("Intelliemu",
-         (int)(DEFAULT_WIDTH * (unsigned)opt->scale),
-         (int)((view_height() + MENU_BAR_HEIGHT) * (unsigned)opt->scale),
+         (int)(DEFAULT_WIDTH * initial_scale),
+         (int)((view_height() + MENU_BAR_HEIGHT) * initial_scale),
          SDL_WINDOW_RESIZABLE);
    if (!window)
    {
