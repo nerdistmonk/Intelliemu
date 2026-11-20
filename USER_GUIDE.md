@@ -21,7 +21,9 @@ Intelliemu runs Mattel Intellivision ROMs in a standalone window using the freei
   - `-s DIR`: extra folder searched for BIOS files
   - `-w N`: window scale, 1-16
   - `-f`: start in fullscreen
-  - `-x`, `--no-xbrz`: start with the xBRZ filter on or off
+  - `-x`, `--xbrz`: start with the xBRZ filter on
+  - `--no-xbrz`: start with the xBRZ filter off
+  - `-b`, `--bankswitch`: load GAME as a bank-switched cart (`.cfg`, `.bin` or `.int`)
   - `-d N`: exit after N frames (requires a game; for testing)
   - `-c PATH`: libretro core to load (default: the `freeintv_libretro.so` built with the emulator)
   - `-h`: show help
