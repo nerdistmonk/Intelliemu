@@ -167,3 +167,4 @@ The emulator rewrites `config.ini` whenever it saves a setting, so hand-added ke
 - **The right stick drives the keypad directions** (Tron Deadly Discs). It is not bindable. Its click and both triggers can be bound as gamepad inputs.
 - **Keypad input from a stick is not supported.** Only the right stick reaches the keypad directions.
 - **ECS keyboard maps by character.** The ECS keyboard matrix is emulated, and the host keyboard sends the character it types. Backspace is the ECS ESC key. Esc stays the emulator's menu key, so the ECS ESC key is only reachable through Backspace. Music keyboard games, such as Melody Blaster, need a real music keyboard and will not be playable with the host keyboard. The ECS PSG2 sound chip is emulated and mixed with PSG1.
+- **The ECS cassette interface is not emulated.** Cassette-based ECS software will not load or save.
