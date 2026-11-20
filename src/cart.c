@@ -373,7 +373,7 @@ int fingerprints[] =
 10251, 0, // Mountain Madness - Super Pro Skiing (1987) (Intv Corp)
 9275,  0, // Mouse Trap (1982) (Coleco)
 10506, 0, // Mr. Basic Meets Bits 'N Bytes (1983) (Mattel)
-11349, 8, // MTE201 Intellivision Test Cartridge (1978) (Mattel)
+12650, 0, // MTE201 Intellivision Test Cartridge (1978) (Mattel)
 10637, 0, // NASL Soccer (1979) (Mattel)
 9563,  0, // NBA Basketball (1978) (Mattel)
 10626, 0, // NFL Football (1978) (Mattel)
