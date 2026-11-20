@@ -33,4 +33,10 @@ struct intelliemu_bios_paths
  */
 void intelliemu_keypad_event(unsigned port, bool down, uint32_t character);
 
+/*
+ * Every keypad button held for a player, as a bitmask. Bit i is keypadStates[i]: '1'-'9' are bits 0-8,
+ * Clear is bit 9, '0' is bit 10, Enter is bit 11. Replaces the held set each time it is called.
+ */
+void intelliemu_keypad_mask(unsigned port, uint32_t mask);
+
 #endif

@@ -135,7 +135,7 @@ bool core_open(core_t *core, const char *library, const char *system_dir, const 
    LOAD_SYMBOL(serialize_size, "retro_serialize_size");
    LOAD_SYMBOL(serialize, "retro_serialize");
    LOAD_SYMBOL(unserialize, "retro_unserialize");
-   LOAD_SYMBOL(keypad_event, "intelliemu_keypad_event");
+   LOAD_SYMBOL(keypad_mask, "intelliemu_keypad_mask");
 
    if (core->api_version() != RETRO_API_VERSION)
    {
@@ -209,8 +209,8 @@ void core_close(core_t *core)
    memset(core, 0, sizeof(*core));
 }
 
-void core_keypad_event(unsigned port, bool down, uint32_t character)
+void core_keypad_mask(unsigned port, uint32_t mask)
 {
-   if (g_core && g_core->keypad_event)
-      g_core->keypad_event(port, down, character);
+   if (g_core && g_core->keypad_mask)
+      g_core->keypad_mask(port, mask);
 }

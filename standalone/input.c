@@ -48,13 +48,12 @@ static struct
    int16_t stick[PLAYER_COUNT][2][2];
 } snapshot;
 
-/* Keypad presses still held, per player. The top entry is the one the core is told about. */
+/* Keypad presses still held, per player. All of them are sent to the core together. */
 static struct held_key held[PLAYER_COUNT][KEYPAD_MAX];
 static int held_count[PLAYER_COUNT];
 
 /* What the core was last told about each player's keypad, so keypad_sync() only sends changes. */
-static bool keypad_sent_down[PLAYER_COUNT];
-static uint32_t keypad_sent_char[PLAYER_COUNT];
+static uint32_t keypad_sent_mask[PLAYER_COUNT];
 /* Set from a keypad press until the core has run, so a release can't hide the press. */
 static bool keypad_unseen[PLAYER_COUNT];
 
@@ -89,24 +88,44 @@ static uint32_t keypad_character(int control)
    }
 }
 
-static void keypad_send(int port, bool down, uint32_t character)
+static void keypad_send(int port, uint32_t mask)
 {
-   keypad_sent_down[port] = down;
-   keypad_sent_char[port] = down ? character : 0;
-   core_keypad_event((unsigned)port, down, character);
+   keypad_sent_mask[port] = mask;
+   core_keypad_mask((unsigned)port, mask);
 }
 
-/* The core only remembers the last key it was sent, so when the newest key lifts,
- * the key beneath it is sent again. */
+/* Returns the core keypad mask bit for a key character, or 0. Matches keypadStates order in the core. */
+static uint32_t keypad_bit(uint32_t character)
+{
+   if (character >= '1' && character <= '9')
+      return 1u << (character - '1');
+
+   switch (character)
+   {
+      case '0':
+         return 1u << 10;
+      case '[':
+         return 1u << 9;
+      case ']':
+         return 1u << 11;
+      default:
+         return 0;
+   }
+}
+
+/* Sends the core every held keypad button at once, so chords such as 1 + 9 both register. */
 static void keypad_sync(int port)
 {
-   bool down = held_count[port] > 0;
-   uint32_t character = down ? held[port][held_count[port] - 1].character : 0;
+   uint32_t mask = 0;
+   int i;
 
-   if (down == keypad_sent_down[port] && character == keypad_sent_char[port])
+   for (i = 0; i < held_count[port]; i++)
+      mask |= keypad_bit(held[port][i].character);
+
+   if (mask == keypad_sent_mask[port])
       return;
 
-   keypad_send(port, down, character);
+   keypad_send(port, mask);
 }
 
 static void keypad_press(int port, bool from_pad, int code, uint32_t character)

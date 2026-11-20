@@ -852,6 +852,20 @@ void intelliemu_keypad_event(unsigned port, bool down, uint32_t character)
 	}
 }
 
+void intelliemu_keypad_mask(unsigned port, uint32_t mask)
+{
+	int i, code = 0;
+
+	if (port > 1)
+		return;
+
+	for (i = 0; i < 12; i++)
+		if (mask & (1u << i))
+			code |= keypadStates[i];
+
+	keypadMask[port] = code;
+}
+
 // Process hotspot input and update controller state directly
 static void process_hotspot_input(void)
 {
