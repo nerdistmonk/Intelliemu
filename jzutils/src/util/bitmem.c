@@ -104,10 +104,10 @@ void bitmem_load(bitmem_t *mem, FILE *f)
         /* ---------------------------------------------------------------- */
         for (i = 0; i < bytes; i += 4, offset++)
         {
-            word = (readbuf[i+0] << 24) |
-                   (readbuf[i+1] << 16) |
-                   (readbuf[i+2] <<  8) |
-                   (readbuf[i+3] <<  0);
+            word = ((uint32_t)readbuf[i+0] << 24) |
+                   ((uint32_t)readbuf[i+1] << 16) |
+                   ((uint32_t)readbuf[i+2] <<  8) |
+                   ((uint32_t)readbuf[i+3] <<  0);
 
             mem->data[offset] = word;
         }
@@ -153,7 +153,7 @@ uint32_t bitmem_read_fwd(bitmem_t *mem, uint32_t addr, int bits)
     /* -------------------------------------------------------------------- */
     /*  Shift the data right to extract the field, and return it.           */
     /* -------------------------------------------------------------------- */
-    return data >> (32 - bits);
+    return bits ? data >> (32 - bits) : 0;
 }
 
 /* ======================================================================== */

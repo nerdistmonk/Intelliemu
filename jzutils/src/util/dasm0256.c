@@ -892,6 +892,7 @@ LOCAL void dasm0256_readsym(FILE *f, uint32_t *addr_lo, bitmem_t *mem)
     char buf[1024], *s1, *s2;
     char *w[3] = { NULL, NULL, NULL };
     int  v1 = -1, v2 = -1;
+    unsigned int uv1, uv2;
     int  ws, is, i, tl, cmd, nargs;
 
     if (!mem && addr_lo)
@@ -948,8 +949,12 @@ LOCAL void dasm0256_readsym(FILE *f, uint32_t *addr_lo, bitmem_t *mem)
         /* ---------------------------------------------------------------- */
         /*  Last, decode any hex values.                                    */
         /* ---------------------------------------------------------------- */
-        if (w[1]) if (sscanf(w[1], "%x", &v1) == 0) v1 = -1;
-        if (w[2]) if (sscanf(w[2], "%x", &v2) == 0) v2 = -1;
+        if (w[1]) {
+            if (sscanf(w[1], "%x", &uv1) == 0) { v1 = -1; } else { v1 = (int)uv1; }
+        }
+        if (w[2]) {
+            if (sscanf(w[2], "%x", &uv2) == 0) { v2 = -1; } else { v2 = (int)uv2; }
+        }
 
         /* ---------------------------------------------------------------- */
         /*  Identify which command it was.                                  */

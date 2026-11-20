@@ -1,6 +1,7 @@
 /* FILE: avl.c */
 /* routines for handling AVL trees... */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "avl.h"
@@ -760,7 +761,7 @@ AVL_DumpTreeInfo
     printf("tree  ==%p\n",(void*)tree);
     if (tree==NULL) return;
     printf("->root==%p\n",(void*)tree->root);
-    printf("->comp==%p\n\n",(void*)tree->comp);
+    printf("->comp==%p\n\n",(void*)(uintptr_t)tree->comp);
     if (tree->root!=NULL) dump(tree->root,0,act);
     printf("--end dump\n");
     return;

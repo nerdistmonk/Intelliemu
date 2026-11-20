@@ -117,7 +117,9 @@ int main(int argc, char **argv)
     unsigned char c1, c2;
     int w1, w2=0, w3=0, s=0, i1, i2, i3, sign;
     int i, j, k;
-    int done, found, temp, temp2, dbd=0;
+    int done, found, dbd=0;
+    int temp = 0, temp2 = 0;
+    unsigned int utemp, utemp2;
     int org, endaddr;
     int pass, reverse_bytes, skip_lo = -1, skip_hi = -1;
     int romw = 0;
@@ -185,7 +187,9 @@ int main(int argc, char **argv)
     {
         int args;
         found = 0;
-        args = sscanf(buffer,"%255s %x %x", command, &temp, &temp2);
+        args = sscanf(buffer,"%255s %x %x", command, &utemp, &utemp2);
+        if (args > 1) temp = (int)utemp;
+        if (args > 2) temp2 = (int)utemp2;
         i = 0;
         while((i<6) && !found)
         {

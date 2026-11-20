@@ -291,6 +291,7 @@ void t_metadata::deserialize( const t_byte_vec& serial )
         const auto remain = std::distance( si, se );
 
         assert( remain >= 2);
+        (void)remain;
 
         const uint8_t tag = *si++;
         const uint8_t len = *si++;

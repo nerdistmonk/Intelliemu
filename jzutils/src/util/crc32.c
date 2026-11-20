@@ -11,6 +11,8 @@
 
 int main(int argc, char *argv[])
 {
+    int status = 0;
+
     if (argc < 2)
     {
         printf("Usage: %s file [file [file [...]]]\n", argv[0]);
@@ -19,9 +21,19 @@ int main(int argc, char *argv[])
 
     while (0<--argc)
     {
-        uint32_t crc = file_crc32(*++argv);
-        printf("%.8X  %s\n", crc, *argv);
+        const char *fname = *++argv;
+        LZFILE *f = lzoe_fopen(fname, "rb");
+
+        if (!f)
+        {
+            fprintf(stderr, "%s: cannot open '%s'\n", argv[0], fname);
+            status = 1;
+            continue;
+        }
+        lzoe_fclose(f);
+
+        printf("%.8X  %s\n", file_crc32(fname), fname);
     }
 
-    return 0;
+    return status;
 }

@@ -569,6 +569,7 @@ LOCAL void dis_jump      (uint32_t addr)
     w2 = GET_WORD(addr + 2);
 
     assert(w0 == 0x0004);
+    (void)w0;
 
     /* -------------------------------------------------------------------- */
     /*  Decode "interrupt mode".  This is in bits 0 and 1 of word 2.        */
@@ -3212,6 +3213,25 @@ LOCAL void license(void)
 
 
 /* ======================================================================== */
+/*  SCAN_HEX -- Matches a literal prefix, then parses a hex value after it.  */
+/*              Returns the same value sscanf() would for "<prefix>%x".     */
+/* ======================================================================== */
+LOCAL int scan_hex(const char *s, const char *prefix, int *out)
+{
+    unsigned int u;
+    size_t n = strlen(prefix);
+    int r;
+
+    if (strncmp(s, prefix, n) != 0)
+        return 0;
+
+    r = sscanf(s + n, "%x", &u);
+    if (r > 0)
+        *out = (int)u;
+    return r;
+}
+
+/* ======================================================================== */
 /*  MAIN             -- In The Beginning, there was MAIN, and C was with    */
 /*                      CONST and VOID, and Darkness was on the face of     */
 /*                      the Programmer.                                     */
@@ -3240,9 +3260,9 @@ int main(int argc, char *argv[])
         {
             char *s;
 
-            if (!sscanf(optarg, "0x%x", &value) &&
-                !sscanf(optarg, "0X%x", &value) &&
-                !sscanf(optarg, "$%x",  &value))
+            if (!scan_hex(optarg, "0x", &value) &&
+                !scan_hex(optarg, "0X", &value) &&
+                !scan_hex(optarg, "$",  &value))
                 value = atoi(optarg);
 
             value2 = value;
@@ -3250,9 +3270,9 @@ int main(int argc, char *argv[])
             s = strchr(optarg, '-');
 
             if ( s && s[1] &&
-                !sscanf(s+1, "0x%x", &value2) &&
-                !sscanf(s+1, "0X%x", &value2) &&
-                !sscanf(s+1, "$%x",  &value2))
+                !scan_hex(s+1, "0x", &value2) &&
+                !scan_hex(s+1, "0X", &value2) &&
+                !scan_hex(s+1, "$",  &value2))
                 value2 = atoi(s+1);
         }
 
