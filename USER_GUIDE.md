@@ -58,6 +58,8 @@ Accepted filenames are the same as in the [README](README.md#bios). Names match 
 | Video | Fullscreen, 4:3 aspect, xBRZ filter, Screenshot (PNG) |
 | Audio | Mute, sample rate (11025, 22050, 44100, 48000 Hz), Volume 100% or 50% |
 
+Losing window focus pauses a running game and clears the audio queue. Regaining focus resumes it only if focus loss was what paused it; a Pause chosen from the menu stays paused.
+
 ## Hotkeys
 
 | Key | Action |

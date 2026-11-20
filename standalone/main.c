@@ -73,6 +73,7 @@ static uint64_t frame_ns;
 static uint64_t next_frame_ns;
 static bool quit_requested;
 static bool paused;
+static bool paused_by_focus_loss;
 static struct settings settings;
 
 /* The --xbrz/--no-xbrz flag overrides the saved setting for this run only. */
@@ -343,6 +344,7 @@ static void close_game(void)
    SDL_free(rom_file);
    rom_file = NULL;
    paused = false;
+   paused_by_focus_loss = false;
    pic_w = DEFAULT_WIDTH;
    pic_h = DEFAULT_HEIGHT;
 
@@ -1154,6 +1156,29 @@ static void announce_gamepad(SDL_JoystickID id)
 
 static void handle_event(const SDL_Event *event)
 {
+   if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST)
+   {
+      if (game_running() && !paused)
+      {
+         paused = true;
+         paused_by_focus_loss = true;
+         if (audio)
+            SDL_ClearAudioStream(audio);
+      }
+   }
+   else if (event->type == SDL_EVENT_WINDOW_FOCUS_GAINED)
+   {
+      if (paused_by_focus_loss)
+      {
+         paused_by_focus_loss = false;
+         if (game_running())
+         {
+            paused = false;
+            next_frame_ns = SDL_GetTicksNS();
+         }
+      }
+   }
+
    if (event->type == SDL_EVENT_QUIT)
       quit_requested = true;
    else if (about_open && (event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
