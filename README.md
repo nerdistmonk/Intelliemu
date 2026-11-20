@@ -1,7 +1,7 @@
 # Intelliemu
 
 Intelliemu is a standalone Mattel Intellivision emulator for GNU/Linux, using an SDL3 GUI. Originally based off freeintv.
-Version 2.0, 11-18-26
+- Version 2.0, 11-18-26
 
 ## Loader System
 
