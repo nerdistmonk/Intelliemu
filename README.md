@@ -4,11 +4,12 @@ Intelliemu is a standalone Mattel Intellivision emulator. It runs a modified/upd
 
 Version 2.0, 11-18-26
 
-## Limitations
+## Loader System
 
-- Intelliemu supports only .int format (.rom can be renamed to .int and it will work fine)
-- Bank-switched roms (usually .bin/.cfg or .int/.cfg pairs, e.g. Dungeon Horde) are supported only in the standalone emulator, through File > Open BankSwitch ROM...; the libretro core does not load them (see the [User Guide](USER_GUIDE.md#running-a-game))
-- Intelliemu does not support any rom over 128kbytes in size due to loader limitations (I've only ever seen one homebrew game exceed this)
+- Intelliemu has two means of loading roms, a classic loader and a newer bankswitching loader.
+- Classic can handle all of the existing .int format roms out there, it has support for JLP and ECS. It accepts .rom or .int files.
+- Bankswitching Loader can handle all of the newer, high-tech homebrew mappers (Intellicart, SDK-1600, etc). It accepts bin/cfg or int/cfg.
+- Bankswitching Loader -requires- a cfg to load a rom file, so stuff like bankworld.rom has to be converted to bin/cfg with rom2bin to work on Intelliemu.
 
 ## Authors & Contributors
 
