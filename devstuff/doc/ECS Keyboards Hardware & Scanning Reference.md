@@ -6,8 +6,8 @@
 
 * **Sound Chip:** The ECS provides a second Programmable Sound Generator (AY-3-8917) mapped to `$00F0–$00FF` (unlike the Master Component's AY-3-8914 at `$01F0–$01FF`).  
 * **Bidirectional I/O Ports:** The AY-3-8917 exposes two 8-bit bidirectional ports:  
-  * `$00FE` (left connector): Connects to the **column** lines in the keyboard matrix.  
-  * `$00FF` (right connector): Connects to the **row** lines in the keyboard matrix.  
+  * `$00FE` (left connector): Connects to the **row** lines in the keyboard matrix.  
+  * `$00FF` (right connector): Connects to the **column** lines in the keyboard matrix.  
 * **Direction Control (`$00F8`):** Bits 6 and 7 of register `$00F8` (R7 enable/I/O control) set port direction for `$00FE` and `$00FF` respectively (`0` \= input, `1` \= output). Each 8-bit port is wholly input or wholly output (no per-bit direction mixing). The lower bits (`0–5`) control tone/noise enables and should be preserved during read-modify-write updates.  
 * **Electrical Characteristics:** Internal pull-up resistors cause undriven/input lines to read as `1` (`$FF` when all bits are high). The ECS includes sixteen 2K-ohm current-limiting resistors (two per port line) for protection. Active-low scanning drives a selected output line to `0` and detects active inputs as `0`.
 
