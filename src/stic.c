@@ -178,7 +178,7 @@ void drawBorder(int scanline)
 	int color = colors[Memory[0x2C] & 0x0f]; // border color
 	
 	if(scanline>=112) { return; }
-    if (scanline == delayV - 1 || scanline == 104 || extendTop != 0 && scanline >= 7 && scanline < 16) {    // Collision border is 1 pixel thick, or 9 if extendTop is set
+    if (scanline == delayV - 1 || scanline == 104 || (extendTop != 0 && scanline >= 7 && scanline < 16)) {    // Collision border is 1 pixel thick, or 9 if extendTop is set
         for(i=1 * 2; i < (8 + 160) * 2; i += 2)         // It extends from column -7 to 159
         {
             collBuffer[i] |= cbit;

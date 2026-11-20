@@ -203,7 +203,7 @@ static void load_controller_base(void)
             }
             controller_base_loaded = 1;
         }
-    } else {
+        stbi_image_free(img_data);
     }
 }
 
@@ -285,7 +285,7 @@ static void build_overlay_path(const char* rom_path, char* overlay_path, size_t 
 static void load_overlay_for_rom(const char* rom_path, const char* system_dir)
 {
     char overlay_path[1024], jpg_path[1024];
-    int width, height, channels, from_file;
+    int width, height, channels;
     unsigned char* img_data;
     char* ext;
     
@@ -303,7 +303,6 @@ static void load_overlay_for_rom(const char* rom_path, const char* system_dir)
     }
     
     img_data = stbi_load(overlay_path, &width, &height, &channels, 4);
-    from_file = 1;
     
     if (!img_data) {
         // Try JPG format
@@ -312,14 +311,12 @@ static void load_overlay_for_rom(const char* rom_path, const char* system_dir)
         if (ext) {
             strcpy(ext, ".jpg");
             img_data = stbi_load(jpg_path, &width, &height, &channels, 4);
-            from_file = 1;
         }
     }
     
     // Fall back to embedded default image
     if (!img_data) {
         img_data = stbi_load_from_memory(default_keypad_image, default_keypad_image_len, &width, &height, &channels, 4);
-        from_file = 0;
     }
     
     if (img_data) {
@@ -341,10 +338,7 @@ static void load_overlay_for_rom(const char* rom_path, const char* system_dir)
             }
             init_overlay_hotspots();
         }
-        // Only free if it came from a file, not if it's embedded
-        if (from_file) {
-            stbi_image_free(img_data);
-        }
+        stbi_image_free(img_data);
     } else {
         overlay_width = 370;
         overlay_height = 600;
