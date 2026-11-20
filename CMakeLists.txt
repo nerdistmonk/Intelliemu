@@ -37,6 +37,7 @@ add_library(freeintv_libretro SHARED
 )
 
 set_target_properties(freeintv_libretro PROPERTIES
+    OUTPUT_NAME intelliemu
     PREFIX ""
     C_STANDARD 17
     C_EXTENSIONS ON

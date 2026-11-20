@@ -15,9 +15,9 @@
 #include "xbrz.h"
 
 #ifdef _WIN32
-#define CORE_FILE_NAME "freeintv_libretro.dll"
+#define CORE_FILE_NAME "intelliemu.dll"
 #else
-#define CORE_FILE_NAME "freeintv_libretro.so"
+#define CORE_FILE_NAME "intelliemu.so"
 #endif
 
 #ifndef DEFAULT_CORE

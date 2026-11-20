@@ -5,7 +5,7 @@ Intelliemu runs Mattel Intellivision ROMs in a standalone window using the freei
 
 ## Requirements
 - Linux with the SDL3 runtime
-- `release/intelliemu` and `release/freeintv_libretro.so` (see [Building](README.md#building))
+- `release/intelliemu` and `release/intelliemu.so` (see [Building](README.md#building))
 - Intellivision BIOS files (see [BIOS Files](#bios-files))
 - Intellivision ROMs in `.int` format
 
@@ -25,7 +25,7 @@ Intelliemu runs Mattel Intellivision ROMs in a standalone window using the freei
   - `--no-xbrz`: start with the xBRZ filter off
   - `-b`, `--bankswitch`: load GAME as a bank-switched cart (`.cfg`, `.bin` or `.int`)
   - `-d N`: exit after N frames (requires a game; for testing)
-  - `-c PATH`: libretro core to load (default: the `freeintv_libretro.so` built with the emulator)
+  - `-c PATH`: libretro core to load (default: the `intelliemu.so` built with the emulator)
   - `-h`: show help
 
 ---
