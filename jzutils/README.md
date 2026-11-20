@@ -25,6 +25,14 @@ cmake --build build
 
 The binaries are written to `build/bin/`.
 
+## Test
+
+```sh
+jzutils/test.sh build/bin
+```
+
+This runs a few known-answer and golden-output checks against the built tools.
+
 ## Notes
 
 - Built without the emulator. Only the emulator-free tools from jzIntv's
