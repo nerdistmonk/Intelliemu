@@ -10,7 +10,7 @@ Graphics RAM.  This file describes their contents.
 ------------------------------------------------------------------------------
 
 The Graphics ROM is mapped at $3000 - $37FF in the Intellivision's
-memory map.  The Graphics RAM is mapped at $3800 - $3AFF.
+memory map.  The Graphics RAM is mapped at $3800 - $39FF.
 
 GRAM and GROM are visible to the CPU during the VBLANK period (see 
 "interrupts.txt" for details), and also when the display is blanked.  
