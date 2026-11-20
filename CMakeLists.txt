@@ -29,10 +29,8 @@ add_library(freeintv_libretro SHARED
     ${LIBRETRO_COMMON_DIR}/compat/compat_posix_string.c
     ${LIBRETRO_COMMON_DIR}/compat/compat_snprintf.c
     ${LIBRETRO_COMMON_DIR}/compat/compat_strl.c
-    ${LIBRETRO_COMMON_DIR}/compat/compat_strcasestr.c
     ${LIBRETRO_COMMON_DIR}/compat/fopen_utf8.c
     ${LIBRETRO_COMMON_DIR}/encodings/encoding_utf.c
-    ${LIBRETRO_COMMON_DIR}/string/stdstring.c
     ${LIBRETRO_COMMON_DIR}/streams/file_stream.c
     ${LIBRETRO_COMMON_DIR}/time/rtime.c
     ${LIBRETRO_COMMON_DIR}/vfs/vfs_implementation.c
