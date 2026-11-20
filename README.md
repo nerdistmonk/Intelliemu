@@ -1,7 +1,7 @@
 # Intelliemu
 
 Intelliemu is a standalone Mattel Intellivision emulator for GNU/Linux, using an SDL3 GUI. Originally based off freeintv.
-- Version 2.0, 11-18-26
+- Version 2.1, 11-18-26
 
 ## Loader System
 
@@ -37,7 +37,7 @@ Output goes to `release/`:
 - `intelliemu.so`: the core, which `intelliemu` loads at runtime (Not intended to be used with Retroarch, and will likely not work if you try)
 - `gamecontrollerdb.txt`: SDL gamepad mappings, copied from `Assets/` at build time and read beside `intelliemu`
 
-To build only the libretro core without SDL3, configure with `-DINTELLIEMU_STANDALONE=OFF`. If CMake cannot find SDL3, add `-DCMAKE_PREFIX_PATH=<prefix>` to the configure step.
+To build only the core without SDL3, configure with `-DINTELLIEMU_STANDALONE=OFF`. If CMake cannot find SDL3, add `-DCMAKE_PREFIX_PATH=<prefix>` to the configure step.
 
 ## Quick Start
 
