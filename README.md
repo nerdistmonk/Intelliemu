@@ -17,6 +17,8 @@ The PSG and STIC emulation was made closer to hardware and optimized by Oscar To
 
 The Intellivoice code has been contributed by Joe Zbiciak (author of jzintv), and adapted by Oscar Toledo G. (nanochess)
 
+jzutils is a fork of Joe Zbiciak's AS1600/jzintv's development tools.
+
 **SDL3 GNU/Linux Port**: Created by R.Shaklfrd and Claude Haiku.
 
 <div style="margin: 18px 0;"><img width="1056" height="708" alt="Intelliemu running Astrosmash" src="screenshots/astrosmash.png" style="border:2px solid #FFD700; border-radius:6px;" /></div>
@@ -54,6 +56,7 @@ See [USER_GUIDE.md](USER_GUIDE.md) for running games, menus, controls, settings,
 
 ## License
 IntelliEmu is licensed under GPLv2.
+jzutils is licensed under GPLv2.
 
 ## BIOS
 Intelliemu needs two Intellivision BIOS images, and accepts an optional third for the Entertainment Computer System. It searches these folders in order, and uses the first matching file for each image:
